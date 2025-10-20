@@ -58,7 +58,7 @@ const AppHeader = () => {
             </CNavLink>
           </CNavItem>
           <CNavItem>
-            <CNavLink href="#">Users</CNavLink>
+            <CNavLink href="https://github.com/Valentina-Nitola/perritoFelizUI">Mascotas</CNavLink>
           </CNavItem>
           <CNavItem>
             <CNavLink href="#">Settings</CNavLink>
