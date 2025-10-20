@@ -24,6 +24,7 @@ body {
   margin-left: 3px;
 }
 
+
 .sidebar-header {
   .nav-underline-border {
     --cui-nav-underline-border-link-padding-x: 1rem;
@@ -34,6 +35,13 @@ body {
     display: flex;
     align-items: center;
     min-height: calc(4rem + 1px); // stylelint-disable-line function-disallowed-list
+  }
+
+  .sidebar-logo-center {
+  display: flex;
+  justify-content: center; 
+  align-items: center;    
+  text-align: center;
   }
 }
 
