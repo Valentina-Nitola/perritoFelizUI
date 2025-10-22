@@ -12,6 +12,7 @@ const DefaultLayout = () => {
       navigate('/login', { replace: true })
     }
   }, [navigate])
+  
   return (
     <div>
       <AppSidebar />

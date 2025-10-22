@@ -17,6 +17,7 @@ import CIcon from '@coreui/icons-react'
 import { cilLockLocked, cilUser } from '@coreui/icons'
 import ReCAPTCHA from 'react-google-recaptcha'
 import { authService } from '../../../services/authService'
+import { logo } from 'src/assets/brand/logo'
 
 const Login = () => {
   const [documento, setDocumento] = useState('')
@@ -68,18 +69,27 @@ const Login = () => {
   const canSubmit = !!documento && !!password && !!recaptchaToken && !loading
 
   return (
-    <div className="bg-body-tertiary min-vh-100 d-flex flex-row align-items-center">
+    <div className="min-vh-100 d-flex flex-row align-items-center">
       <CContainer>
         <CRow className="justify-content-center">
           <CCol md={8}>
             <CCardGroup>
-              <CCard className="p-4">
+              <CCard className="p-4 shadow-lg" style={{ borderRadius: '20px 0 0 20px' }}>
                 <CCardBody>
                   <CForm onSubmit={handleLogin}>
-                    <h1>Iniciar Sesión</h1>
-                    <p className="text-body-secondary">
+                    <div className="text-center mb-4">
+                      <h1 className="mb-2">Bienvenido a</h1>
+                      <CIcon
+                        icon={logo}
+                        height={140}
+                        className="my-2 text-primary"
+                      />
+
+                      <h2 className="mt-2">Iniciar sesión</h2>
+                      <p className="text-body-secondary">
                       Recuerda que debes iniciar sesión con el documento de identidad con el cual te registraste
-                    </p>
+                      </p>
+                    </div>
 
                     <CInputGroup className="mb-3">
                       <CInputGroupText>
@@ -120,18 +130,25 @@ const Login = () => {
                       )}
                     </div>
 
-                    <CRow>
-                      <CCol xs={6}>
-                        <CButton color="primary" className="px-4" type="submit" disabled={!canSubmit}>
+                    <CRow className="align-items-center">
+                      <CCol xs="auto">
+                        <CButton
+                          color="primary"
+                          className="px-4"
+                          type="submit"
+                          disabled={!canSubmit}
+                        >
                           {loading ? 'Ingresando...' : 'Iniciar Sesión'}
                         </CButton>
                       </CCol>
-                      <CCol xs={6} className="text-right">
-                        <CButton color="link" className="px-0">
+
+                      <CCol className="text-end">
+                        <CButton color="link" className="px-0 text-nowrap">
                           ¿Olvidaste tu contraseña?
                         </CButton>
                       </CCol>
                     </CRow>
+
 
                     {/* Nota visible de modo mock */}
                     {useMocks && (
@@ -143,7 +160,7 @@ const Login = () => {
                 </CCardBody>
               </CCard>
 
-              <CCard className="text-white bg-primary py-5" style={{ width: '44%' }}>
+              <CCard className="text-white bg-primary py-5" style={{ width: '44%', borderRadius: '0 20px 20px 0' }}>
                 <CCardBody className="text-center">
                   <div>
                     <h2>Crea tu cuenta</h2>

@@ -1,12 +1,24 @@
-@use "@coreui/coreui/scss/coreui" as * with ( 
-  $enable-deprecation-messages: false,
+/* 1) Configura variables ANTES de que cualquier otro módulo las cargue */
+@use "@coreui/coreui/scss/variables" as * with (
+  $primary: #2C6E91,               /* 💙 tu color de marca */
+  $enable-deprecation-messages: false
 );
+
+/* 2) Luego ya puedes cargar el resto del core */
+@use "@coreui/coreui/scss/functions" as *;
+@use "@coreui/coreui/scss/maps" as *;
+@use "@coreui/coreui/scss/mixins" as *;
+@use "@coreui/coreui/scss/utilities" as *;
+@use "@coreui/coreui/scss/coreui" as *;
+
+/* 3) Extras */
 @use "@coreui/chartjs/scss/coreui-chartjs";
 @use "vendors/simplebar";
 
-body {
-  background-color: var(--cui-tertiary-bg);
-}
+/* 4) Tus estilos propios */
+body { background-color: #F5E8D5 !important; }
+
+.logo-title { color: var(--cui-primary) !important; } 
 
 .wrapper {
   width: 100%;
@@ -14,6 +26,7 @@ body {
   will-change: auto;
   @include transition(padding .15s);
 }
+
 
 .header > .container-fluid,
 .sidebar-header {
@@ -73,3 +86,5 @@ body {
     --cui-footer-bg: var(--cui-body-bg);
   }
 }
+
+
