@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import {
   CButton,
   CCard,
@@ -16,7 +16,7 @@ import {
 import CIcon from '@coreui/icons-react'
 import { cilLockLocked, cilUser } from '@coreui/icons'
 import ReCAPTCHA from 'react-google-recaptcha'
-import { authService } from '../../../services/authService' // 👈 ajusta la ruta si difiere
+import { authService } from '../../../services/authService'
 
 const Login = () => {
   const [documento, setDocumento] = useState('')
@@ -25,12 +25,12 @@ const Login = () => {
   const [loading, setLoading] = useState(false)
   const recaptchaRef = useRef(null)
 
+  const navigate = useNavigate() 
+
   const siteKey = import.meta.env.VITE_RECAPTCHA_SITEKEY
   const useMocks = import.meta.env.VITE_USE_MOCKS === 'true'
 
-  const handleCaptchaChange = (value) => {
-    setRecaptchaToken(value) // token string
-  }
+  const handleCaptchaChange = (value) => setRecaptchaToken(value)
 
   const handleLogin = async (e) => {
     e.preventDefault()
@@ -46,23 +46,18 @@ const Login = () => {
 
     try {
       setLoading(true)
-
-      // 1) (Opcional) Verificar captcha (mock/real)
-      // Con backend real, normalmente esta verificación se hace en el mismo endpoint de login.
       await authService.verifyRecaptcha(recaptchaToken)
-
-      // 2) Login (mock/real)
       const data = await authService.login({ documento, password, recaptchaToken })
+      localStorage.setItem('token', data.token || 'mock-token')
+      localStorage.setItem('user', JSON.stringify(data.user || { id: 1, name: 'Demo' }))
+
       console.log('Login OK', data)
 
-      // Aquí guardas token/navegas/etc.
-      // localStorage.setItem('token', data.token)
-      // navigate('/dashboard')
-      alert(useMocks ? 'Login mock exitoso' : 'Login exitoso')
+      navigate('/dashboard')
+
     } catch (err) {
       console.error(err)
       alert(err.message)
-      // reset del captcha para obligar a revalidar
       if (recaptchaRef.current) recaptchaRef.current.reset()
       setRecaptchaToken(null)
     } finally {
