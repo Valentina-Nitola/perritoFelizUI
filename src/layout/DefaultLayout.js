@@ -7,9 +7,9 @@ const DefaultLayout = () => {
   const navigate = useNavigate()
 
   useEffect(() => {
-    const token = localStorage.getItem('token') // o la variable que uses para sesión
+    const token = localStorage.getItem('token')
     if (!token) {
-      navigate('/login', { replace: true }) // redirige al login si no hay token
+      navigate('/login', { replace: true })
     }
   }, [navigate])
   return (
