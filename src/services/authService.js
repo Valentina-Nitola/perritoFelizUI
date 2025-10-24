@@ -27,7 +27,7 @@ async function realVerifyRecaptcha(token) {
   // Normalmente NO llamas a Google desde el front.
 // En su lugar, envías el token a tu backend y allá verificas.
 // Aquí quedará preparado por si decides exponer un endpoint.
-  return postJSON(`${API_BASE}/api/auth/verify-recaptcha`, { recaptchaToken: token })
+  return postJSON('http://localhost:8000/api/auth/verify-recaptcha/', { recaptchaToken: token })
 }
 
 async function realLogin(payload) {
