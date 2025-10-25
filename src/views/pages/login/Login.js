@@ -12,12 +12,26 @@ import {
   CInputGroup,
   CInputGroupText,
   CRow,
+  CCarousel,
+  CCarouselItem,
+  CImage,
+  CCarouselCaption,
 } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
 import { cilLockLocked, cilUser } from '@coreui/icons'
 import ReCAPTCHA from 'react-google-recaptcha'
 import { authService } from '../../../services/authService'
 import { logo } from 'src/assets/brand/logo'
+import 'src/scss/patterns.scss'
+
+
+const images = import.meta.glob('/src/assets/images/Carrusel/*.{png,PNG,jpg,jpeg,webp}', {
+  eager: true,
+  as: 'url',
+})
+
+const slides = Object.values(images).map((url) => ({ src: url }))
+console.log('slides', slides)
 
 const Login = () => {
   const [documento, setDocumento] = useState('')
@@ -97,7 +111,7 @@ const handleLogin = async (e) => {
   const canSubmit = !!documento && !!password && !!recaptchaToken && !loading
 
   return (
-    <div className="min-vh-100 d-flex flex-row align-items-center">
+    <div className="page-bg-pattern d-flex flex-row align-items-center">
       <CContainer>
         <CRow className="justify-content-center">
           <CCol md={8}>
@@ -161,35 +175,55 @@ const handleLogin = async (e) => {
                     <CRow className="align-items-center">
                       <CCol xs="auto">
                         <CButton
-                          color="primary"
-                          className="px-4"
+                          color="success"
+                          className="px-4 btn-white-text"
                           type="submit"
                           disabled={!canSubmit}
                         >
                           {loading ? 'Ingresando...' : 'Iniciar Sesión'}
                         </CButton>
                       </CCol>
-
+                      
                       <CCol className="text-end">
-                        <CButton color="link" className="px-0 text-nowrap">
-                          ¿Olvidaste tu contraseña?
-                        </CButton>
+                        <Link to="/password">
+                          <CButton color="link" className="px-0 text-nowrap">
+                            ¿Olvidaste tu contraseña?
+                          </CButton>
+                        </Link>
                       </CCol>
                     </CRow>
 
-
-                    {/* Nota visible de modo mock */}
-                    {useMocks && (
-                      <p className="mt-3 text-body-secondary" style={{ fontSize: 12 }}>
-                        Modo sin backend activado (mock). Usa documento <code>123</code> y contraseña <code>perrito</code>.
-                      </p>
-                    )}
                   </CForm>
                 </CCardBody>
               </CCard>
 
               <CCard className="text-white bg-primary py-5" style={{ width: '44%', borderRadius: '0 20px 20px 0' }}>
                 <CCardBody className="text-center">
+
+                  <div className="mb-4" style={{ borderRadius: 12, overflow: 'hidden' }}>
+                    <CCarousel
+                      ride="carousel"
+                      interval={3000}
+                      pause={false}     // o "hover" si prefieres que se pause al pasar el mouse
+                      wrap
+                      controls={false}
+                      indicators
+                      dark
+                    >
+                      {slides.map((s, i) => (
+                        <CCarouselItem key={i}>
+                          <CImage
+                            className="d-block w-100"
+                            src={s.src}
+                            alt={`slide-${i}`}
+                            style={{ objectFit: 'cover', height: 240 }}
+                          />
+                        </CCarouselItem>
+                      ))}
+                    </CCarousel>
+                  </div>
+
+
                   <div>
                     <h2>Crea tu cuenta</h2>
                     <p>
