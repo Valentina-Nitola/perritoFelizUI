@@ -155,11 +155,13 @@ const Login = () => {
                           {loading ? 'Ingresando...' : 'Iniciar Sesión'}
                         </CButton>
                       </CCol>
-
+                      
                       <CCol className="text-end">
-                        <CButton color="link" className="px-0 text-nowrap">
-                          ¿Olvidaste tu contraseña?
-                        </CButton>
+                        <Link to="/password">
+                          <CButton color="link" className="px-0 text-nowrap">
+                            ¿Olvidaste tu contraseña?
+                          </CButton>
+                        </Link>
                       </CCol>
                     </CRow>
 

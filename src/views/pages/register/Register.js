@@ -59,6 +59,7 @@ const Register = () => {
     return e
   }
 
+  // Valida en BD si el correo existe
   const checkEmailRemote = async () => {
     if (!emailRe.test(values.correo)) return
     try {
@@ -67,6 +68,7 @@ const Register = () => {
     } catch {}
   }
 
+  //Valida en BD si el documento existe
   const checkDocRemote = async () => {
     if (!digitsRe.test(values.nroDoc) || values.nroDoc.length < 6) return
     try {
@@ -75,6 +77,7 @@ const Register = () => {
     } catch {}
   }
 
+  // Hace envio del formulario a BD
   const onSubmit = async (e) => {
     e.preventDefault()
     const eNow = validate()
