@@ -147,8 +147,8 @@ const Login = () => {
                     <CRow className="align-items-center">
                       <CCol xs="auto">
                         <CButton
-                          color="primary"
-                          className="px-4"
+                          color="success"
+                          className="px-4 btn-white-text"
                           type="submit"
                           disabled={!canSubmit}
                         >

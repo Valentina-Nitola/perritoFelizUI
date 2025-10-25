@@ -1,6 +1,6 @@
-/* 1) Configura variables ANTES de que cualquier otro módulo las cargue */
-@use "@coreui/coreui/scss/variables" as * with (
-  $primary: #2C6E91,               /* 💙 tu color de marca */
+@use "@coreui/coreui/scss/coreui" with (
+  $primary: #2C6E91,
+  $success: #4CAF50,
   $enable-deprecation-messages: false
 );
 
@@ -15,10 +15,15 @@
 @use "@coreui/chartjs/scss/coreui-chartjs";
 @use "vendors/simplebar";
 
-/* 4) Tus estilos propios */
+/* 4) Estilos propios */
 body { background-color: #F5E8D5 !important; }
 
 .logo-title { color: var(--cui-primary) !important; } 
+
+.btn-white-text {
+  color: #fff !important;
+}
+
 
 .wrapper {
   width: 100%;
