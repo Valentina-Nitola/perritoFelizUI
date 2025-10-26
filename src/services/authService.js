@@ -43,11 +43,11 @@ async function realLogin(payload) {
 
 //==============FUNCIONES PARA register.js====================================
 
-export const checkEmail = async (correo) => {
+export const checkEmail = async (email) => {
   const response = await fetch(`${API_BASE}/check-email/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ correo }),
+    body: JSON.stringify({ email }),
   });
 
   if (!response.ok) {
@@ -117,9 +117,9 @@ export const authService = {
     return realLogin(payload)
   },
 
-  async checkEmail(correo) {
-    if (USE_MOCKS) return mockCheckEmail(correo)
-    return checkEmail(correo)
+  async checkEmail(email) {
+    if (USE_MOCKS) return mockCheckEmail(email)
+    return checkEmail(email)
   },
 
   async checkDocumento(nroDoc) {
