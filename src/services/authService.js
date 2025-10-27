@@ -34,7 +34,7 @@ async function realVerifyRecaptcha(token) {
 }
 
 async function realLogin(payload) {
-  return postJSON(`${API_BASE}/auth/login`, payload)
+  return postJSON(`${API_BASE}/login`, payload)
 }
 //============================================================================
 

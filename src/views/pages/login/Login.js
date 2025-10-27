@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react'
+export const API_BASE = import.meta.env.VITE_API_BASE
 import { Link, useNavigate } from 'react-router-dom'
 import {
   CButton,
@@ -67,7 +68,7 @@ const handleLogin = async (e) => {
     await authService.verifyRecaptcha(recaptchaToken); 
 
     // 🔹 Fetch to Django backend
-    const response = await fetch("http://127.0.0.1:8000/api/login/", {
+    const response = await fetch(`${API_BASE}/login/`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
