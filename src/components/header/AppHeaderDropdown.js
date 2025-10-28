@@ -9,13 +9,7 @@ import {
   CDropdownMenu,
   CDropdownToggle,
 } from '@coreui/react'
-import {
-  cilCreditCard,
-  cilLockLocked,
-  cilSettings,
-  cilUser,
-  cilDog,
-} from '@coreui/icons'
+import { cilCreditCard, cilLockLocked, cilSettings, cilUser, cilDog } from '@coreui/icons'
 import CIcon from '@coreui/icons-react'
 import { useNavigate } from 'react-router-dom'
 import { useEffect } from 'react'
@@ -25,20 +19,22 @@ const AppHeaderDropdown = () => {
   const navigate = useNavigate()
 
   const handleLogout = () => {
-  // Si usas token o guardas usuario en localStorage, lo borras aquí
-  localStorage.removeItem('token')
-  localStorage.removeItem('user')
+    // Si usas token o guardas usuario en localStorage, lo borras aquí
+    localStorage.removeItem('token')
+    localStorage.removeItem('user')
 
-  // Luego rediriges al login
-  navigate('/login', { replace: true })
-}
+    // Luego rediriges al login
+    navigate('/login', { replace: true })
+  }
   return (
     <CDropdown variant="nav-item">
       <CDropdownToggle placement="bottom-end" className="py-0 pe-0" caret={false}>
         <CAvatar src={avatar8} size="md" />
       </CDropdownToggle>
       <CDropdownMenu className="pt-0" placement="bottom-end">
-        <CDropdownHeader className="bg-body-secondary fw-semibold my-2">Confuguracion</CDropdownHeader>
+        <CDropdownHeader className="bg-body-secondary fw-semibold my-2">
+          Confuguracion
+        </CDropdownHeader>
         <CDropdownItem href="#">
           <CIcon icon={cilUser} className="me-2" />
           Perfil
