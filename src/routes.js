@@ -1,6 +1,16 @@
 import React from 'react'
 
 const Dashboard = React.lazy(() => import('./views/dashboard/Dashboard'))
+
+// Usuario interno
+const User_Int = React.lazy(() => import('./views/user_int/User_Int'))
+
+// Perfil
+const Profile = React.lazy(() => import('./views/profile/Profile'))
+
+// Matricula
+const Matricula = React.lazy(() => import('./views/matricula/Matricula'))
+
 const Colors = React.lazy(() => import('./views/theme/colors/Colors'))
 const Typography = React.lazy(() => import('./views/theme/typography/Typography'))
 const Login = React.lazy(() => import('./views/pages/login/Login'))
@@ -56,6 +66,11 @@ const routes = [
   { path: '/', exact: true, name: 'Home' },
   { path: '/dashboard', name: 'Dashboard', element: Dashboard },
   { path: '/login', name: 'Login', element: Login },
+
+  { path: '/profile', name: 'Profile', element: Profile },
+  { path: '/user_int', name: 'User Int', element: User_Int },
+  { path: '/matricula', name: 'Matricula', element: Matricula },
+
   { path: '/theme', name: 'Theme', element: Colors, exact: true },
   { path: '/theme/colors', name: 'Colors', element: Colors },
   { path: '/theme/typography', name: 'Typography', element: Typography },
