@@ -15,14 +15,14 @@ import {
 } from '@coreui/react'
 import 'src/scss/patterns.scss'
 
-// Solo dígitos
+// Verifica que se ingrese solo numeros
 const digitsRe = /^[0-9]+$/
 
 const Code = () => {
   const location = useLocation()
   const navigate = useNavigate()
 
-  // email desde navigate('/code', { state: { email } }) o ?email=
+  // Trae el correo que se ingreso aqui
   const emailFromState = location?.state?.email || ''
   const emailFromQuery = useMemo(() => {
     const sp = new URLSearchParams(location.search)
@@ -103,11 +103,11 @@ const Code = () => {
       }
       */
 
-      // 🔹 Simulación temporal (quítala al conectar el back)
+      // Simulación temporal (Daniel, quítala al conectar el back)
       await new Promise((r) => setTimeout(r, 800))
 
       setServerMsg('Código verificado correctamente.')
-      // ✅ Redirigir a la pantalla de reset (lleva email y token/código)
+      // Redirigir a la pantalla de reset (lleva email y token/código)
       navigate('/reset', {
         replace: true,
         state: { email: email.trim(), token: code.trim() },
@@ -119,7 +119,7 @@ const Code = () => {
     }
   }
 
-  const Code = async () => {
+  const resendCode = async () => {
     if (!email) {
       setServerErr('No se detectó el correo asociado.')
       return
@@ -129,10 +129,10 @@ const Code = () => {
       setServerMsg('')
       setServerErr('')
 
-      // 🚀 LLAMADA AL BACKEND: reenviar código
+      // LLAMADA AL BACKEND: reenviar código
       // Descomenta y ajusta a tu servicio real:
       /*
-        const res = await fetch('/auth/password-reset/request', {
+      const res = await fetch('/auth/password-reset/request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email.trim() }),
@@ -140,7 +140,7 @@ const Code = () => {
       if (!res.ok) throw new Error('No se pudo reenviar el código.')
       */
 
-      // 🔹 Simulación temporal
+      // Simulación temporal
       await new Promise((r) => setTimeout(r, 800))
       setServerMsg('Si el correo existe, reenviamos un nuevo código. Revisa tu bandeja y SPAM.')
     } catch (err) {
