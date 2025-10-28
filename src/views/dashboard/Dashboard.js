@@ -41,6 +41,7 @@ import {
   cilPeople,
   cilUser,
   cilUserFemale,
+  cilDog,
 } from '@coreui/icons'
 
 import avatar1 from 'src/assets/images/avatars/1.jpg'
@@ -89,18 +90,18 @@ const Dashboard = () => {
     {
       avatar: { src: avatar1, status: 'success' },
       user: {
-        name: 'Yiorgos Avraamu',
+        name: 'Maximus',
         new: true,
-        registered: 'Jan 1, 2023',
+        registered: '1 Oct, 2025',
       },
       country: { name: 'USA', flag: cifUs },
       usage: {
-        value: 50,
-        period: 'Jun 11, 2023 - Jul 10, 2023',
+        value: 80,
+        period: '1 Oct, 2025 - 1 Nov, 2025',
         color: 'success',
       },
       payment: { name: 'Mastercard', icon: cibCcMastercard },
-      activity: '10 sec ago',
+      activity: '26 Oct, 2025',
     },
     {
       avatar: { src: avatar2, status: 'danger' },
@@ -327,17 +328,17 @@ const Dashboard = () => {
                 <CTableHead className="text-nowrap">
                   <CTableRow>
                     <CTableHeaderCell className="bg-body-tertiary text-center">
-                      <CIcon icon={cilPeople} />
+                      <CIcon icon={cilDog} />
                     </CTableHeaderCell>
-                    <CTableHeaderCell className="bg-body-tertiary">User</CTableHeaderCell>
+                    <CTableHeaderCell className="bg-body-tertiary">Mascota</CTableHeaderCell>
                     <CTableHeaderCell className="bg-body-tertiary text-center">
-                      Country
+                      Edad
                     </CTableHeaderCell>
-                    <CTableHeaderCell className="bg-body-tertiary">Usage</CTableHeaderCell>
+                    <CTableHeaderCell className="bg-body-tertiary">Matricula</CTableHeaderCell>
                     <CTableHeaderCell className="bg-body-tertiary text-center">
-                      Payment Method
+                      Plan de Matricula
                     </CTableHeaderCell>
-                    <CTableHeaderCell className="bg-body-tertiary">Activity</CTableHeaderCell>
+                    <CTableHeaderCell className="bg-body-tertiary">Ultima Asistencia</CTableHeaderCell>
                   </CTableRow>
                 </CTableHead>
                 <CTableBody>
@@ -349,7 +350,7 @@ const Dashboard = () => {
                       <CTableDataCell>
                         <div>{item.user.name}</div>
                         <div className="small text-body-secondary text-nowrap">
-                          <span>{item.user.new ? 'New' : 'Recurring'}</span> | Registered:{' '}
+                          <span>{item.user.new ? 'Nuevo' : 'Recurrente'}</span> | Registrado:{' '}
                           {item.user.registered}
                         </div>
                       </CTableDataCell>
@@ -369,7 +370,7 @@ const Dashboard = () => {
                         <CIcon size="xl" icon={item.payment.icon} />
                       </CTableDataCell>
                       <CTableDataCell>
-                        <div className="small text-body-secondary text-nowrap">Last login</div>
+                        <div className="small text-body-secondary text-nowrap">Ultima asistencia</div>
                         <div className="fw-semibold text-nowrap">{item.activity}</div>
                       </CTableDataCell>
                     </CTableRow>
