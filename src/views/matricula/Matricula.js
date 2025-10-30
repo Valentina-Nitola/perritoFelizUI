@@ -125,7 +125,9 @@ const MatricularCanino = () => {
                 {/* Plan de matrícula */}
                 <div className="mb-3">
                   <CInputGroup hasValidation>
-                    <CInputGroupText><CIcon icon={cilBadge} /></CInputGroupText>
+                    <CInputGroupText>
+                      <CIcon icon={cilBadge} />
+                    </CInputGroupText>
                     <CFormSelect name="plan" value={form.plan} onChange={handleChange} required>
                       <option value="">Selecciona un plan</option>
                       <option value="mensual">1 mes</option>
@@ -143,7 +145,9 @@ const MatricularCanino = () => {
                 {/* Plan de transporte */}
                 <div className="mb-3">
                   <CInputGroup hasValidation>
-                    <CInputGroupText><CIcon icon={cilBusAlt} /></CInputGroupText>
+                    <CInputGroupText>
+                      <CIcon icon={cilBusAlt} />
+                    </CInputGroupText>
                     <CFormSelect
                       name="transporte"
                       value={form.transporte}
@@ -166,7 +170,9 @@ const MatricularCanino = () => {
                 {/* Nombre del canino */}
                 <div className="mb-3">
                   <CInputGroup hasValidation>
-                    <CInputGroupText><CIcon icon={cilUser} /></CInputGroupText>
+                    <CInputGroupText>
+                      <CIcon icon={cilUser} />
+                    </CInputGroupText>
                     <CFormInput
                       type="text"
                       name="nombre"
@@ -184,7 +190,9 @@ const MatricularCanino = () => {
                 {/* Raza */}
                 <div className="mb-3">
                   <CInputGroup hasValidation>
-                    <CInputGroupText><CIcon icon={cilUser} /></CInputGroupText>
+                    <CInputGroupText>
+                      <CIcon icon={cilUser} />
+                    </CInputGroupText>
                     <CFormInput
                       type="text"
                       name="raza"
@@ -204,7 +212,9 @@ const MatricularCanino = () => {
                 {/* Fecha de nacimiento */}
                 <div className="mb-3">
                   <CInputGroup hasValidation>
-                    <CInputGroupText><CIcon icon={cilBirthdayCake} /></CInputGroupText>
+                    <CInputGroupText>
+                      <CIcon icon={cilBirthdayCake} />
+                    </CInputGroupText>
                     <CFormInput
                       type="date"
                       name="nacimiento"
@@ -221,7 +231,9 @@ const MatricularCanino = () => {
                 {/* Talla */}
                 <div className="mb-3">
                   <CInputGroup hasValidation>
-                    <CInputGroupText><CIcon icon={cilBadge} /></CInputGroupText>
+                    <CInputGroupText>
+                      <CIcon icon={cilBadge} />
+                    </CInputGroupText>
                     <CFormSelect name="talla" value={form.talla} onChange={handleChange} required>
                       <option value="">Selecciona la talla del canino</option>
                       <option value="min">Mini</option>
@@ -266,7 +278,13 @@ const MatricularCanino = () => {
               <CButton color="primary" type="submit" disabled={submitting}>
                 {submitting ? 'Enviando…' : 'Confirmar la matrícula'}
               </CButton>
-              <CButton color="secondary" variant="outline" type="button" onClick={handleReset} disabled={submitting}>
+              <CButton
+                color="secondary"
+                variant="outline"
+                type="button"
+                onClick={handleReset}
+                disabled={submitting}
+              >
                 Limpiar
               </CButton>
             </div>

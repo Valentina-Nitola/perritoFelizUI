@@ -35,7 +35,7 @@ const AppHeaderDropdown = () => {
         <CDropdownHeader className="bg-body-secondary fw-semibold my-2">
           Confuguracion
         </CDropdownHeader>
-        <CDropdownItem href="#">
+        <CDropdownItem href="/profile">
           <CIcon icon={cilUser} className="me-2" />
           Perfil
         </CDropdownItem>
