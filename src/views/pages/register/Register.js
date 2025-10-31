@@ -1,4 +1,6 @@
 import React, { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+
 import {
   CButton, 
   CCard, 
@@ -19,7 +21,7 @@ import { logo } from 'src/assets/brand/logo'
 import { authService } from 'src/services/authService'
 import 'src/scss/patterns.scss'
 
-// Valedia que el nombre contenga caracteres validos y que no sea corto
+// Valida que el nombre contenga caracteres validos y que no sea corto
 const nameRe = /^[A-Za-zÀ-ÿ\u00f1\u00d1 ]{2,60}$/
 // Limita caracteres especiales y/o letras, solo se puede escribir numeros
 const digitsRe = /^[0-9]+$/
@@ -33,6 +35,8 @@ const Register = () => {
     nombres: '', apellidos: '', tipoDoc: '', nroDoc: '',
     celular: '', correo: '', direccion: '', pass: '', pass2: ''
   })
+
+  const navigate = useNavigate() 
 
   // Valida que campos el usuario ya selecciono
   const [touched, setTouched] = useState({})

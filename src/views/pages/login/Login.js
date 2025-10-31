@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react'
+export const API_BASE = import.meta.env.VITE_API_BASE
 import { Link, useNavigate } from 'react-router-dom'
 import {
   CButton,
@@ -47,38 +48,66 @@ const Login = () => {
 
   const handleCaptchaChange = (value) => setRecaptchaToken(value)
 
-  const handleLogin = async (e) => {
-    e.preventDefault()
+//--------------------------------------------------------------------------------
+// Adapted handleLogin for Django backend
+//--------------------------------------------------------------------------------
+const handleLogin = async (e) => {
+  e.preventDefault();
 
-    if (!documento || !password) {
-      alert('Por favor, completa documento y contraseña')
-      return
-    }
-    if (!recaptchaToken) {
-      alert('Por favor, confirma que no eres un robot')
-      return
-    }
-
-    try {
-      setLoading(true)
-      await authService.verifyRecaptcha(recaptchaToken)
-      const data = await authService.login({ documento, password, recaptchaToken })
-      localStorage.setItem('token', data.token || 'mock-token')
-      localStorage.setItem('user', JSON.stringify(data.user || { id: 1, name: 'Demo' }))
-
-      console.log('Login OK', data)
-
-      navigate('/dashboard')
-
-    } catch (err) {
-      console.error(err)
-      alert(err.message)
-      if (recaptchaRef.current) recaptchaRef.current.reset()
-      setRecaptchaToken(null)
-    } finally {
-      setLoading(false)
-    }
+  if (!documento || !password) {
+    alert('Por favor, completa documento y contraseña');
+    return;
   }
+  if (!recaptchaToken) {
+    alert('Por favor, confirma que no eres un robot');
+    return;
+  }
+
+  try {
+    setLoading(true);
+    await authService.verifyRecaptcha(recaptchaToken); 
+
+    // 🔹 Fetch to Django backend
+    const response = await fetch(`${API_BASE}/login/`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        documento: documento,  // Django usa 'username', pero tu input es 'documento'
+        password: password,
+      }),
+    });
+    console.log("response: ",response)
+
+    const data = await response.json();
+    localStorage.setItem('user', JSON.stringify(data.user))
+    localStorage.setItem('token', data.token)
+
+    console.log("data:", data);
+
+    if (response.ok) {
+      console.log("Holaa")
+      // 🔹 Guardar sesión local
+      localStorage.setItem("user", JSON.stringify(data.usuario));
+      alert("Login correcto");
+      console.log("Usuario autenticado:", data.usuario);
+
+      navigate("/dashboard");
+      console.log("Intentando navegar a /dashboard");
+    } else {
+      alert(data.error || "Credenciales inválidas");
+      if (recaptchaRef.current) recaptchaRef.current.reset();
+      setRecaptchaToken(null);
+    }
+  } catch (err) {
+    console.error(err);
+    alert("Error de conexión con el servidor");
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   const canSubmit = !!documento && !!password && !!recaptchaToken && !loading
 

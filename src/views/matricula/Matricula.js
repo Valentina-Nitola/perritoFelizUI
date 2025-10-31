@@ -85,6 +85,7 @@ const MatricularCanino = () => {
       handleReset()
       alert('Matrícula creada correctamente.')
     } catch (err) {
+      
       console.error(err)
       alert('Ocurrió un problema al crear la matrícula.')
     } finally {
