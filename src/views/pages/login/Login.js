@@ -65,7 +65,7 @@ const handleLogin = async (e) => {
 
   try {
     setLoading(true);
-    await authService.verifyRecaptcha(recaptchaToken); 
+    await authService.verifyRecaptcha(recaptchaToken);
 
     // 🔹 Fetch to Django backend
     const response = await fetch(`${API_BASE}/login/`, {
@@ -74,29 +74,34 @@ const handleLogin = async (e) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        documento: documento,  // Django usa 'username', pero tu input es 'documento'
+        documento: documento,  
         password: password,
       }),
     });
-    console.log("response: ",response)
+
+    console.log("response: ", response);
 
     const data = await response.json();
-    localStorage.setItem('user', JSON.stringify(data.user))
-    localStorage.setItem('token', data.token)
+    localStorage.setItem('user', JSON.stringify(data.user));
+    localStorage.setItem('token', data.token);
 
     console.log("data:", data);
 
     if (response.ok) {
-      console.log("Holaa")
+      console.log("Holaa");
       // 🔹 Guardar sesión local
       localStorage.setItem("user", JSON.stringify(data.usuario));
-      alert("Login correcto");
+      alert("Inicio de sesión exitoso");
       console.log("Usuario autenticado:", data.usuario);
 
       navigate("/dashboard");
       console.log("Intentando navegar a /dashboard");
     } else {
-      alert(data.error || "Credenciales inválidas");
+      // Captura de errores específicos del backend (incluye usuario inactivo)
+      const backendMsg =
+        data.error || data.detail || (data.non_field_errors && data.non_field_errors[0]);
+      alert(backendMsg || "Credenciales inválidas");
+
       if (recaptchaRef.current) recaptchaRef.current.reset();
       setRecaptchaToken(null);
     }
@@ -107,6 +112,7 @@ const handleLogin = async (e) => {
     setLoading(false);
   }
 };
+
 
 
   const canSubmit = !!documento && !!password && !!recaptchaToken && !loading
