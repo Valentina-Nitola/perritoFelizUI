@@ -53,35 +53,39 @@ const Password = ({ onRequested }) => {
   }
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    setTouched(true)
-    const v = validate(email)
-    setErrors(v)
-    setServerMsg('')
+  e.preventDefault()
+  setTouched(true)
+  const v = validate(email)
+  setErrors(v)
+  setServerMsg('')
 
-    if (v.email) return
+  if (v.email) return
 
-    // Aquí ya está validado el correo en frontend
-    // Si quieres llamar a tu API desde aquí, descomenta el bloque de fetch:
-    try {
-      setLoading(true)
+  try {
+    setLoading(true)
 
-      // Ejemplo de llamada (neutral: siempre dice "ok" si existe o no)
-      // const res = await fetch('/auth/password-reset/request', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ email: email.trim() }),
-      // })
-      // if (!res.ok) throw new Error('No se pudo solicitar el código.')
-      // const data = await res.json()
+    const res = await fetch(`${import.meta.env.VITE_API_BASE}/password_reset/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email.trim() }),
+    })
 
-       navigate('/code', { state: { email: email.trim() } })
-    } catch (err) {
-      setServerMsg('Ocurrió un problema al solicitar el código. Intenta de nuevo.')
-    } finally {
-      setLoading(false)
+    if (res.ok) {
+      setServerMsg('📧 Si el correo está registrado, te hemos enviado las instrucciones para restablecer tu contraseña.')
+      navigate('/code', { state: { email: email.trim() } })
+    } else {
+      const data = await res.json()
+      console.error(data)
+      setServerMsg('❌ No se pudo enviar el correo. Intenta de nuevo más tarde.')
     }
+  } catch (err) {
+    console.error(err)
+    setServerMsg('⚠️ Error de conexión. Revisa tu red o intenta más tarde.')
+  } finally {
+    setLoading(false)
   }
+}
+
 
   const isInvalid = Boolean(touched && errors.email)
 

@@ -15,14 +15,10 @@ import {
 } from '@coreui/react'
 import 'src/scss/patterns.scss'
 
-// Verifica que se ingrese solo numeros
-const digitsRe = /^[0-9]+$/
-
 const Code = () => {
   const location = useLocation()
   const navigate = useNavigate()
 
-  // Trae el correo que se ingreso aqui
   const emailFromState = location?.state?.email || ''
   const emailFromQuery = useMemo(() => {
     const sp = new URLSearchParams(location.search)
@@ -41,22 +37,17 @@ const Code = () => {
   const validate = (value) => {
     const err = { code: '' }
     if (!value.trim()) {
-      err.code = 'El código es obligatorio.'
-    } else if (!digitsRe.test(value.trim())) {
-      err.code = 'El código solo debe contener números.'
-    } else if (value.trim().length < 6) {
-      err.code = 'El código debe tener al menos 6 dígitos.'
+      err.code = 'El token es obligatorio.'
+    } else if (value.trim().length < 10) {
+      err.code = 'El token parece demasiado corto.'
     }
     return err
   }
 
   const handleChange = (e) => {
-    const v = e.target.value.replace(/\s+/g, '')
-    // solo permitimos limpiar o números
-    if (v === '' || digitsRe.test(v)) {
-      setCode(v)
-      if (touched) setErrors(validate(v))
-    }
+    const v = e.target.value.trim()
+    setCode(v)
+    if (touched) setErrors(validate(v))
   }
 
   const handleBlur = () => {
@@ -65,7 +56,6 @@ const Code = () => {
   }
 
   useEffect(() => {
-    // limpiar mensajes al cambiar el code
     setServerMsg('')
     setServerErr('')
   }, [code])
@@ -87,27 +77,20 @@ const Code = () => {
     try {
       setLoading(true)
 
-      // 🚀 LLAMADA AL BACKEND: verificar código
-      // Descomenta y ajusta a tu servicio real:
-      /*
-      const res = await fetch('/auth/password-reset/verify', {
+      // ✅ Verificar el token real con django_rest_passwordreset
+      const res = await fetch(`${import.meta.env.VITE_API_BASE}/password_reset/validate_token/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim(), code: code.trim() }),
+        body: JSON.stringify({ token: code.trim() }),
       })
-      if (!res.ok) {
-        // opcional: leer mensaje del backend
-        // const data = await res.json().catch(() => ({}))
-        // throw new Error(data?.message || 'Código inválido o expirado')
-        throw new Error('Código inválido o expirado')
-      }
-      */
 
-      // Simulación temporal (Daniel, quítala al conectar el back)
-      await new Promise((r) => setTimeout(r, 800))
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data?.detail || 'Código inválido o expirado')
+      }
 
       setServerMsg('Código verificado correctamente.')
-      // Redirigir a la pantalla de reset (lleva email y token/código)
+      // Redirigir al paso de restablecimiento de contraseña
       navigate('/reset', {
         replace: true,
         state: { email: email.trim(), token: code.trim() },
@@ -129,19 +112,14 @@ const Code = () => {
       setServerMsg('')
       setServerErr('')
 
-      // LLAMADA AL BACKEND: reenviar código
-      // Descomenta y ajusta a tu servicio real:
-      /*
-      const res = await fetch('/auth/password-reset/request', {
+      const res = await fetch(`${import.meta.env.VITE_API_BASE}/api/password_reset/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email.trim() }),
       })
-      if (!res.ok) throw new Error('No se pudo reenviar el código.')
-      */
 
-      // Simulación temporal
-      await new Promise((r) => setTimeout(r, 800))
+      if (!res.ok) throw new Error('No se pudo reenviar el código.')
+
       setServerMsg('Si el correo existe, reenviamos un nuevo código. Revisa tu bandeja y SPAM.')
     } catch (err) {
       setServerErr(err?.message || 'No se pudo reenviar el código. Intenta nuevamente.')
@@ -169,16 +147,12 @@ const Code = () => {
                     <CInputGroupText>#</CInputGroupText>
                     <CFormInput
                       type="text"
-                      inputMode="numeric"
-                      placeholder="Código de 6 dígitos"
-                      autoComplete="one-time-code"
+                      placeholder="Pega el token recibido por correo"
                       value={code}
                       onChange={handleChange}
                       onBlur={handleBlur}
                       invalid={isInvalid}
                       required
-                      maxLength={6}
-                      aria-describedby="codeHelp"
                     />
                     <CFormFeedback invalid role="alert">
                       {errors.code}
