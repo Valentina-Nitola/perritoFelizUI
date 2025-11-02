@@ -1,6 +1,5 @@
 import React, { useMemo, useRef, useState } from 'react'
 import {
-  CAvatar,
   CBadge,
   CButton,
   CCard,
@@ -17,6 +16,7 @@ import {
 } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
 import { cilCalendar, cilEnvelopeClosed, cilHome, cilPhone, cilUser, cilBadge } from '@coreui/icons'
+import { useAuthUser } from 'src/context/AuthUserContext'
 
 const MOCK_USER = {
   name: 'Junior',
@@ -75,26 +75,24 @@ const isFuture = (yyyyMmDd) => {
 }
 
 const Profile = () => {
-  // cache -------------------------------------------------
-  let cached = MOCK_USER
-  try {
-    const raw = localStorage.getItem('user')
-    if (raw) cached = { ...MOCK_USER, ...JSON.parse(raw) }
-  } catch {}
+  const { user: ctxUser, updateUser } = useAuthUser()
+
+  // toma del contexto o usa mock
+  const baseUser = ctxUser ? { ...MOCK_USER, ...ctxUser } : MOCK_USER
 
   // state -------------------------------------------------
   const [form, setForm] = useState({
-    name: cached.name || '',
-    lastname: cached.lastname || '',
-    nacimiento: fmtDate(cached.nacimiento),
-    correo: cached.correo || cached.email || '',
-    celular: cached.celular || '',
-    direccion: cached.direccion || cached.address || '',
-    documento: cached.documento || cached.doc || '',
-    about: cached.about || '',
+    name: baseUser.name || '',
+    lastname: baseUser.lastname || '',
+    nacimiento: fmtDate(baseUser.nacimiento),
+    correo: baseUser.correo || baseUser.email || '',
+    celular: baseUser.celular || '',
+    direccion: baseUser.direccion || baseUser.address || '',
+    documento: baseUser.documento || baseUser.doc || '',
+    about: baseUser.about || '',
   })
   const [errors, setErrors] = useState({})
-  const [avatarUrl, setAvatarUrl] = useState(cached.avatarUrl || '')
+  const [avatarUrl, setAvatarUrl] = useState(baseUser.avatarUrl || '')
   const [avatarFile, setAvatarFile] = useState(null)
   const [editMode, setEditMode] = useState(false)
   const [validated, setValidated] = useState(false)
@@ -156,7 +154,6 @@ const Profile = () => {
     const { name, value } = e.target
     setForm((p) => ({ ...p, [name]: value }))
     if (validated || errors[name]) {
-      // valida en caliente si ya intentaron guardar o ya había error
       const msg = validateField(name, value)
       setErrors((prev) => ({ ...prev, [name]: msg }))
     }
@@ -181,19 +178,19 @@ const Profile = () => {
   }
 
   const handleEditToggle = () => {
-    // al cancelar, restablece valores/errores
     if (editMode) {
+      // restaurar
       setForm({
-        name: cached.name || '',
-        lastname: cached.lastname || '',
-        nacimiento: fmtDate(cached.nacimiento),
-        correo: cached.correo || cached.email || '',
-        celular: cached.celular || '',
-        direccion: cached.direccion || cached.address || '',
-        documento: cached.documento || cached.doc || '',
-        about: cached.about || '',
+        name: baseUser.name || '',
+        lastname: baseUser.lastname || '',
+        nacimiento: fmtDate(baseUser.nacimiento),
+        correo: baseUser.correo || baseUser.email || '',
+        celular: baseUser.celular || '',
+        direccion: baseUser.direccion || baseUser.address || '',
+        documento: baseUser.documento || baseUser.doc || '',
+        about: baseUser.about || '',
       })
-      setAvatarUrl(cached.avatarUrl || '')
+      setAvatarUrl(baseUser.avatarUrl || '')
       setAvatarFile(null)
       setErrors({})
       setValidated(false)
@@ -203,30 +200,29 @@ const Profile = () => {
 
   const handleSave = async () => {
     if (!validateAll()) {
-      // activa modo edición si no lo estaba y frena guardado
       if (!editMode) setEditMode(true)
       return
     }
 
-    // TODO: conecta con backend (FormData + PUT)
-    // const fd = new FormData()
-    // Object.entries(form).forEach(([k, v]) => fd.append(k, v))
-    // if (avatarFile) fd.append('avatar', avatarFile)
-    // await fetch('/api/profile', { method: 'PUT', body: fd })
+    // TODO: conecta con backend (multipart FormData + PUT) y obtén avatarUrl final
+    // const updatedFromAPI = await profileService.updateProfile(form, avatarFile)
 
-    try {
-      const toSave = { ...cached, ...form, avatarUrl: avatarUrl || cached.avatarUrl }
-      localStorage.setItem('user', JSON.stringify(toSave))
-      // refresca cache local
-      cached = toSave
-      setEditMode(false)
-      alert('Cambios guardados localmente (mock).')
-    } catch {
-      alert('No se pudo guardar localmente.')
+    // Por ahora: sincroniza en contexto y localStorage
+    const updated = {
+      ...(ctxUser || {}),
+      ...form,
+      avatarUrl: avatarUrl || baseUser.avatarUrl || '',
+      role: baseUser.role,
+      petsCount: baseUser.petsCount,
+      createdAt: baseUser.createdAt,
     }
+
+    updateUser(updated) // <— sincroniza toda la app
+    setEditMode(false)
+    alert('Cambios guardados (mock local).')
   }
 
-  // Diseño
+  // UI ----------------------------------------------------
   return (
     <CRow className="g-4">
       {/* Columna izquierda */}
@@ -318,31 +314,31 @@ const Profile = () => {
                   <CInputGroup hasValidation>
                     <CInputGroupText><CIcon icon={cilPhone} /></CInputGroupText>
                     <CFormInput
-                        type="text"
-                        name="celular"
-                        placeholder="Celular"
-                        value={form.celular}
-                        onChange={(e) => {
-                            // Solo permite números
-                            const numericValue = e.target.value.replace(/\D/g, '')
-                            handleChange({ target: { name: e.target.name, value: numericValue } })
-                        }}
-                        onKeyDown={(e) => {
-                            // Bloquea letras, símbolos y espacios
-                            if (
-                            !/[0-9]/.test(e.key) && // no número
-                            e.key !== 'Backspace' &&
-                            e.key !== 'Delete' &&
-                            e.key !== 'ArrowLeft' &&
-                            e.key !== 'ArrowRight' &&
-                            e.key !== 'Tab'
-                            ) {
-                            e.preventDefault()
-                            }
-                        }}
-                        readOnly={!editMode}
-                        invalid={!!errors.celular}
-                        required
+                      type="text"
+                      name="celular"
+                      placeholder="Celular"
+                      value={form.celular}
+                      onChange={(e) => {
+                        // Solo permite números
+                        const numericValue = e.target.value.replace(/\D/g, '')
+                        handleChange({ target: { name: e.target.name, value: numericValue } })
+                      }}
+                      onKeyDown={(e) => {
+                        // Bloquea letras, símbolos y espacios
+                        if (
+                          !/[0-9]/.test(e.key) &&
+                          e.key !== 'Backspace' &&
+                          e.key !== 'Delete' &&
+                          e.key !== 'ArrowLeft' &&
+                          e.key !== 'ArrowRight' &&
+                          e.key !== 'Tab'
+                        ) {
+                          e.preventDefault()
+                        }
+                      }}
+                      readOnly={!editMode}
+                      invalid={!!errors.celular}
+                      required
                     />
                     <CFormFeedback invalid>{errors.celular}</CFormFeedback>
                   </CInputGroup>
@@ -425,20 +421,21 @@ const Profile = () => {
               {form.name} {form.lastname}{age ? `, ${age}` : ''} años
             </h6>
 
+            {/* Bloque horizontal: Mascotas | Miembro desde */}
             <div className="d-flex justify-content-center align-items-center gap-4 my-3">
               <div className="text-center">
-                <div className="fs-6 fw-bold">{cached.petsCount ?? 0}</div>
+                <div className="fs-6 fw-bold">{baseUser.petsCount ?? 0}</div>
                 <div className="text-body-secondary">Mascotas</div>
               </div>
               <div className="vr" />
               <div className="text-center">
-                <div className="fs-6 fw-bold">{fmtDate(cached.createdAt)}</div>
+                <div className="fs-6 fw-bold">{fmtDate(baseUser.createdAt)}</div>
                 <div className="text-body-secondary">Miembro desde</div>
               </div>
             </div>
 
             <div className="d-flex align-items-center gap-2 mb-2">
-              <CBadge color={roleColor(cached.role)}>{cached.role || 'rol'}</CBadge>
+              <CBadge color={roleColor(baseUser.role)}>{baseUser.role || 'rol'}</CBadge>
             </div>
 
             <div className="w-100">
