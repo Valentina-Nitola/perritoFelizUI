@@ -25,6 +25,18 @@ const _nav = [
     component: CNavItem,
     name: 'Dashboard',
     to: '/dashboard',
+    anyOf: ['dashboard:ver'],
+    icon: <CIcon icon={cilSpeedometer} customClassName="nav-icon" />,
+    badge: {
+      color: 'info',
+      text: 'NEW',
+    },
+  },
+  {
+    component: CNavItem,
+    name: 'Dashboard_Client',
+    to: '/dashboard_Client',
+    anyOf: ['dashboard_client:ver'],
     icon: <CIcon icon={cilSpeedometer} customClassName="nav-icon" />,
     badge: {
       color: 'info',
@@ -35,12 +47,14 @@ const _nav = [
     component: CNavItem,
     name: 'Usuario Interno',
     to: '/user_int',
+    anyOf: ['user_int:ver'],
     icon: <CIcon icon={cilUser} customClassName="nav-icon" />,
   },
   {
     component: CNavItem,
     name: 'Matricula',
     to: '/matricula',
+    anyOf: ['matricula:ver'],
     icon: <CIcon icon={cilDog} customClassName="nav-icon" />,
   },
 
