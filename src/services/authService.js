@@ -1,110 +1,82 @@
+// ----------------------------------------------
+// src/services/authService.js
+// ----------------------------------------------
 import { API_BASE, USE_MOCKS, postJSON } from './apiClient'
 
-// Mock helpers (solo para dev sin backend)
+//----------------------------------------------
+// Utilidades mock (solo para desarrollo sin backend)
+//----------------------------------------------
 function wait(ms) {
   return new Promise((res) => setTimeout(res, ms))
 }
 
-
-//=================FUNCIONES PARA login.js===============================================
-
+//----------------------------------------------
+// MOCKS (para modo sin backend)
+//----------------------------------------------
 async function mockVerifyRecaptcha(token) {
-  // Simula verificación: si hay token, es válido.
   await wait(600)
   if (!token) throw new Error('Captcha inválido (mock)')
   return { success: true }
 }
 
-async function mockLogin({ documento, password, recaptchaToken }) {
+async function mockLogin({ documento, password }) {
   await wait(800)
-  if (!documento || !password) throw new Error('Credenciales incompletas (mock)')
-  // Demo: documento 123 y password perrito
   if (documento !== '123' || password !== 'perrito') {
     throw new Error('Credenciales inválidas (mock)')
   }
   return { msg: 'Login exitoso (mock)', token: 'jwt-mock', user: { id: 1, name: 'Perrito' } }
 }
 
-// Servicios reales (para cuando haya backend)
-async function realVerifyRecaptcha(token) {
-// Normalmente NO llamas a Google desde el front.
-// En su lugar, envías el token a tu backend y allá verificas.
-// Aquí quedará preparado por si decides exponer un endpoint.
-  return postJSON(`${API_BASE}/auth/verify-recaptcha/`, { recaptchaToken: token })
-}
-
+//----------------------------------------------
+// Login real sin JWT (legacy) — usado por clientes
+//----------------------------------------------
 async function realLogin(payload) {
   return postJSON(`${API_BASE}/login`, payload)
 }
-//============================================================================
 
+//----------------------------------------------
+// ReCAPTCHA (si lo usas)
+//----------------------------------------------
+async function realVerifyRecaptcha(token) {
+  return postJSON(`${API_BASE}/auth/verify-recaptcha/`, { recaptchaToken: token })
+}
 
-
-
-//==============FUNCIONES PARA register.js====================================
-
+//----------------------------------------------
+// Registro de cliente
+//----------------------------------------------
 export const checkEmail = async (email) => {
   const response = await fetch(`${API_BASE}/check-email/`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email }),
-  });
+  })
+  if (!response.ok) throw new Error('Error checking email')
+  return await response.json()
+}
 
-  if (!response.ok) {
-    throw new Error("Error checking email");
-  }
-
-  const data = await response.json();
-  return data; // { exists: true/false }
-};
-//----------------------------------------------
-
-//----------------------------------------------
-// 🔹 Verifica si el documento ya está registrado
-//----------------------------------------------
 export const checkDocumento = async (nroDoc) => {
   const response = await fetch(`${API_BASE}/check-documento/`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ nroDoc }),
-  });
+  })
+  if (!response.ok) throw new Error('Error checking document')
+  return await response.json()
+}
 
-  if (!response.ok) {
-    throw new Error("Error checking document");
-  }
-
-  const data = await response.json();
-  return data; // { exists: true/false }
-};
-//----------------------------------------------
-
-//----------------------------------------------
-// 🔹 Registra un nuevo usuario
-//----------------------------------------------
 export const register = async (payload) => {
   const response = await fetch(`${API_BASE}/register/`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
-  });
-
-  const data = await response.json();
-
-  if (!response.ok) {
-    const error = new Error(data.message || "Error en el registro");
-    error.status = response.status;
-    error.data = data;
-    throw error;
-  }
-
-  return data;
-};
-
-//============================================================================
-
+  })
+  const data = await response.json()
+  if (!response.ok) throw new Error(data.message || 'Error en el registro')
+  return data
+}
 
 //----------------------------------------------
-// API público del servicio
+// Export principal
 //----------------------------------------------
 export const authService = {
   async verifyRecaptcha(token) {
@@ -118,17 +90,48 @@ export const authService = {
   },
 
   async checkEmail(email) {
-    if (USE_MOCKS) return mockCheckEmail(email)
     return checkEmail(email)
   },
 
   async checkDocumento(nroDoc) {
-    if (USE_MOCKS) return mockCheckDocumento(nroDoc)
     return checkDocumento(nroDoc)
   },
 
   async register(payload) {
-    if (USE_MOCKS) return mockRegister(payload)
     return register(payload)
   },
+}
+
+// ======================================================================
+// NUEVO BLOQUE JWT (para usuarios internos o staff)
+// ======================================================================
+
+// 🔹 Login real con JWT (usa /api/token/)
+export async function jwtLogin(documento, password) {
+  const response = await fetch(`${API_BASE}/token/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ documento, password }),
+  })
+
+  const data = await response.json()
+  if (!response.ok) {
+    console.error('JWT Login error:', data)
+    throw new Error(data.detail || 'Error al iniciar sesión')
+  }
+
+  localStorage.setItem('accessToken', data.access)
+  localStorage.setItem('refreshToken', data.refresh)
+  return data
+}
+
+// 🔹 Cerrar sesión
+export function logout() {
+  localStorage.removeItem('accessToken')
+  localStorage.removeItem('refreshToken')
+}
+
+// 🔹 Obtener token actual
+export function getAccessToken() {
+  return localStorage.getItem('accessToken')
 }
