@@ -1,3 +1,4 @@
+import { crearUsuarioInterno } from 'src/services/usersService'
 import React, { useState } from 'react'
 import {
   CRow, CCol, CCard, CCardHeader, CCardBody,
@@ -32,32 +33,48 @@ const InternalUsers = () => {
 
   // por favor aqui conectar con el backend
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    setValidated(true)
+  e.preventDefault()
+  setValidated(true)
 
-    // validación general
-    const allFilled = Object.values(form).every((v) => v.trim() !== '')
-    const validEmail = emailRe.test(form.email)
-    const validPass = strongPassRe.test(form.password)
+  const allFilled = Object.values(form).every((v) => v.trim() !== '')
+  const validEmail = emailRe.test(form.email)
+  const validPass = strongPassRe.test(form.password)
 
-    if (!allFilled) {
-      alert('Por favor completa todos los campos.')
-      return
-    }
-    if (!validEmail) {
-      alert('El correo electrónico no tiene un formato válido.')
-      return
-    }
-    if (!validPass) {
-      alert('La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula y un número.')
-      return
+  if (!allFilled) {
+    alert('Por favor completa todos los campos.')
+    return
+  }
+  if (!validEmail) {
+    alert('El correo electrónico no tiene un formato válido.')
+    return
+  }
+  if (!validPass) {
+    alert('La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula y un número.')
+    return
+  }
+
+  try {
+    const datos = {
+      tipo_usuario: form.role.toUpperCase(),
+      tipo_documento: form.tipoDoc,
+      documento: form.doc,
+      nombres: form.name,
+      apellidos: form.lastname,
+      fecha_nacimiento: form.nacimiento,
+      fecha_vinculacion: form.vinculacion,
+      email: form.email,
+      password: form.password,
     }
 
-    // Si pasa las validaciones:
-    console.log('Usuario interno creado:', form)
+    const nuevoUsuario = await crearUsuarioInterno(datos)
+    console.log('✅ Usuario interno creado:', nuevoUsuario)
     alert(`Usuario ${form.name} (${form.role}) creado exitosamente.`)
     handleReset()
+  } catch (err) {
+    console.error('❌ Error al crear usuario:', err)
+    alert('Error al crear usuario interno.')
   }
+}
 
   const handleReset = () => {
     setForm({
@@ -93,9 +110,9 @@ const InternalUsers = () => {
                       required
                     >
                       <option value="">Selecciona un rol</option>
-                      <option value="director">Director</option>
-                      <option value="admin">Administrador</option>
-                      <option value="trainer">Entrenador</option>
+                      <option value="DIRECTOR">Director</option>
+                      <option value="ADMIN">Administrador</option>
+                      <option value="ENTRENADOR">Entrenador</option>
                     </CFormSelect>
                     <CFormFeedback invalid>Selecciona un rol.</CFormFeedback>
                   </CInputGroup>
@@ -173,7 +190,7 @@ const InternalUsers = () => {
                       <option value="">Selecciona el tipo de documento</option>
                       <option value="CC">Cédula de ciudadanía</option>
                       <option value="CE">Cédula de extranjería</option>
-                      <option value="PA">Pasaporte</option>
+                      <option value="PAS">Pasaporte</option>
                     </CFormSelect>
                     <CFormFeedback invalid>Campo obligatorio.</CFormFeedback>
                   </CInputGroup>
