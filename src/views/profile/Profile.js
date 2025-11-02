@@ -226,7 +226,7 @@ const Profile = () => {
     }
   }
 
-  // UI ----------------------------------------------------
+  // Diseño
   return (
     <CRow className="g-4">
       {/* Columna izquierda */}
