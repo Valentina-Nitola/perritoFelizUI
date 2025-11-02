@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import {
   CRow,
   CCol,
@@ -28,10 +28,31 @@ const MatricularCanino = () => {
   const [vacunasPdf, setVacunasPdf] = useState(null) // File
   const [validated, setValidated] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [nacimientoError, setNacimientoError] = useState('') 
+
+  // Utilidad: formatear fecha a YYYY-MM-DD
+  const fmt = (d) => {
+    const yyyy = d.getFullYear()
+    const mm = String(d.getMonth() + 1).padStart(2, '0')
+    const dd = String(d.getDate()).padStart(2, '0')
+    return `${yyyy}-${mm}-${dd}`
+  }
+
+  
+  const maxNacimiento = useMemo(() => {
+    const cutoff = new Date()
+    cutoff.setMonth(cutoff.getMonth() - 4)
+    return fmt(cutoff)
+  }, [])
 
   const handleChange = (e) => {
     const { name, value } = e.target
     setForm((prev) => ({ ...prev, [name]: value }))
+
+    // Si el usuario cambia nacimiento, validamos en caliente
+    if (name === 'nacimiento') {
+      setNacimientoError(validateNacimiento(value, maxNacimiento))
+    }
   }
 
   const handleFileChange = (e) => {
@@ -39,16 +60,28 @@ const MatricularCanino = () => {
     setVacunasPdf(file)
   }
 
+  // Valida que la fecha sea <= maxNacimiento (al menos 4 meses)
+  const validateNacimiento = (value, maxAllowed) => {
+    if (!value) return 'Campo obligatorio.'
+    // Si es posterior al máximo (hoy - 4 meses), es inválida
+    if (value > maxAllowed) return 'El canino debe tener mínimo 4 meses.'
+    return ''
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setValidated(true)
 
-    // Validaciones mínimas
-    const allFilled = Object.values(form).every((v) => String(v).trim() !== '')
-    if (!allFilled) {
-      return
-    }
-    // Validación archivo: requerido, PDF y tamaño (p. ej., <= 5MB)
+    // Validaciones mínimas de campos de texto/select
+    const allFilled = Object.values({ ...form }).every((v) => String(v).trim() !== '')
+    if (!allFilled) return
+
+    // Validación estricta de edad (servidor/DOM-proof)
+    const nErr = validateNacimiento(form.nacimiento, maxNacimiento)
+    setNacimientoError(nErr)
+    if (nErr) return
+
+    // Validación archivo: requerido, PDF y tamaño (<= 5MB)
     if (!vacunasPdf) return
     const isPdf = vacunasPdf.type === 'application/pdf'
     const under5mb = vacunasPdf.size <= 5 * 1024 * 1024
@@ -64,13 +97,12 @@ const MatricularCanino = () => {
       fd.append('raza', form.raza)
       fd.append('nacimiento', form.nacimiento)
       fd.append('talla', form.talla)
-      fd.append('vacunas_pdf', vacunasPdf) // campo de archivo
+      fd.append('vacunas_pdf', vacunasPdf)
 
-      // Ejemplo de endpoint (ajusta URL y auth según tu contrato)
       const res = await fetch('/api/matriculas', {
         method: 'POST',
-        body: fd, // ¡NO pongas Content-Type, el navegador lo añade con boundary!
-        // credentials: 'include', // si usas cookies httpOnly
+        body: fd,
+        // credentials: 'include',
       })
 
       if (!res.ok) {
@@ -78,14 +110,9 @@ const MatricularCanino = () => {
         throw new Error(msg || 'No se pudo crear la matrícula.')
       }
 
-      // Opcional: leer respuesta JSON
-      // const data = await res.json()
-
-      // Reset
       handleReset()
       alert('Matrícula creada correctamente.')
     } catch (err) {
-      
       console.error(err)
       alert('Ocurrió un problema al crear la matrícula.')
     } finally {
@@ -103,10 +130,11 @@ const MatricularCanino = () => {
       talla: '',
     })
     setVacunasPdf(null)
+    setNacimientoError('')
     setValidated(false)
   }
 
-  // Ayuda visual: mensaje de error para el PDF
+  // Mensaje de error para el PDF
   const pdfError = (() => {
     if (!validated) return ''
     if (!vacunasPdf) return 'Adjunta el carné de vacunación en PDF.'
@@ -221,9 +249,12 @@ const MatricularCanino = () => {
                       name="nacimiento"
                       value={form.nacimiento}
                       onChange={handleChange}
+                      max={maxNacimiento} // <-- clave: al menos 4 meses
                       required
                     />
-                    <CFormFeedback invalid>Campo obligatorio.</CFormFeedback>
+                    <CFormFeedback invalid>
+                      {nacimientoError || 'Campo obligatorio.'}
+                    </CFormFeedback>
                   </CInputGroup>
                 </div>
               </CCol>
@@ -248,7 +279,7 @@ const MatricularCanino = () => {
               </CCol>
             </CRow>
 
-            {/* === Subir PDF del carné de vacunación (debajo de los inputs, antes de los botones) === */}
+            {/* Subir PDF del carné de vacunación */}
             <CRow>
               <CCol md={12}>
                 <div className="mb-3">
@@ -260,10 +291,10 @@ const MatricularCanino = () => {
                       accept="application/pdf"
                       onChange={handleFileChange}
                       required
-                      aria-label="Subir PDF con el carnét de vacunación"
+                      aria-label="Subir PDF con el carné de vacunación"
                     />
                     <CFormFeedback invalid>
-                      {pdfError || 'Adjunta el PDF del carnét de vacunación.'}
+                      {pdfError || 'Adjunta el PDF del carné de vacunación.'}
                     </CFormFeedback>
                   </CInputGroup>
                   {vacunasPdf && (
