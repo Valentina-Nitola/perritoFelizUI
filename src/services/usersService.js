@@ -42,18 +42,19 @@ async function handleResponse(resp, defaultError = 'Error en la petición') {
   return data
 }
 
-// ----------------------------------------------------
-// Crear usuario interno (POST /usuarios-internos/)
-// ----------------------------------------------------
+// ======================================================
+// Crear usuario interno (ADMIN, DIRECTOR, ENTRENADOR)
+// Endpoint: POST /usuarios-internos/
+// ======================================================
 export async function crearUsuarioInterno(datos) {
   const token = getAccessToken()
-  if (!token) throw new Error('No hay token de acceso. Inicia sesión.')
+  if (!token) throw new Error('No hay token de sesión. Inicia sesión nuevamente.')
 
   const resp = await fetch(`${API_BASE}/usuarios-internos/`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
+      Authorization: `Bearer ${token}`, // Enviar token JWT
     },
     body: JSON.stringify(datos),
   })
@@ -75,37 +76,29 @@ export async function listarUsuariosInternos(params = {}) {
   const token = getAccessToken()
   if (!token) throw new Error('No hay token de acceso. Inicia sesión.')
 
-  // Si tu backend usa otros nombres (p. ej. page_size, search, role),
-  // mapea aquí. Ejemplo:
+  // Mapea a los nombres reales que espera tu API si difieren
   const mapped = {
-    page: params.page,                 // o params.pageIndex
-    page_size: params.pageSize,        // si tu API usa page_size
+    page: params.page,
+    page_size: params.pageSize,
     q: params.q,
-    role: params.role,                 // DIRECTOR|ADMIN|ENTRENADOR
-    from: params.from,                 // YYYY-MM-DD
-    to: params.to,                     // YYYY-MM-DD
+    role: params.role,
+    from: params.from,
+    to: params.to,
   }
 
   const resp = await fetch(`${API_BASE}/usuarios-internos/${buildQuery(mapped)}`, {
     method: 'GET',
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
+    headers: { Authorization: `Bearer ${token}` },
   })
 
-  // Esperado: { items: [], total: number }
-  // Si tu backend devuelve otro shape (por ejemplo {results, count}),
-  // normalizamos aquí.
   const data = await handleResponse(resp, 'Error al listar usuarios internos')
 
-  // Normalización opcional
+  // Normalización opcional de shape
   if (Array.isArray(data)) {
-    // Si te devuelve solo un array, adaptamos a {items,total}
     return { items: data, total: data.length }
   }
   if ('results' in data && 'count' in data) {
     return { items: data.results, total: data.count }
   }
-  // Por defecto asumimos { items, total }
   return { items: data.items ?? [], total: data.total ?? 0 }
 }

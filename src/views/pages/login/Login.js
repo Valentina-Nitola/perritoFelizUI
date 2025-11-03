@@ -40,63 +40,66 @@ const Login = () => {
   const [loading, setLoading] = useState(false)
   const recaptchaRef = useRef(null)
   const navigate = useNavigate()
-  const { setUser } = useAuthUser() // ← clave
+  const { setUser } = useAuthUser()
 
   const siteKey = import.meta.env.VITE_RECAPTCHA_SITEKEY
   const handleCaptchaChange = (value) => setRecaptchaToken(value)
 
+  const mapRole = (rawUser) => {
+    const roleRaw =
+      rawUser?.role ||
+      (rawUser?.rol && (rawUser.rol.nombre || rawUser.rol)) ||
+      rawUser?.tipo_usuario ||
+      rawUser?.perfil ||
+      rawUser?.tipo ||
+      ''
+    const rl = String(roleRaw).toLowerCase()
+    const alias = {
+      admin: 'administrador',
+      administrador: 'administrador',
+      director: 'administrador',
+      entrenador: 'entrenador',
+      cliente: 'cliente',
+    }
+    return alias[rl] || normalizeRole(rl)
+  }
+
   const handleLogin = async (e) => {
     e.preventDefault()
-    if (!documento || !password) { alert('Por favor, completa documento y contraseña'); return }
-    if (!recaptchaToken) { alert('Por favor, confirma que no eres un robot'); return }
+    if (!documento || !password) {
+      alert('Por favor, completa documento y contraseña')
+      return
+    }
+    if (!recaptchaToken) {
+      alert('Por favor, confirma que no eres un robot')
+      return
+    }
 
     try {
       setLoading(true)
+
+      // Verifica reCAPTCHA (opcional)
       await authService.verifyRecaptcha(recaptchaToken)
 
-      const response = await fetch(`${API_BASE}/login/`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ documento, password }),
-      })
+      // Login con JWT → guarda tokens + user (y si no viene, llama a /me)
+      const { user } = await authService.jwtLogin(documento, password)
 
-      const data = await response.json()
+      // Normaliza rol y guarda en contexto + localStorage
+      const role = mapRole(user)
+      const normalizedUser = { ...user, role }
+      authService.setUser(normalizedUser) // actualiza localStorage
+      setUser(normalizedUser) // actualiza contexto
 
-      if (!response.ok) {
-        const backendMsg = data.error || data.detail || (data.non_field_errors && data.non_field_errors[0])
-        alert(backendMsg || 'Credenciales inválidas')
-        if (recaptchaRef.current) recaptchaRef.current.reset()
-        setRecaptchaToken(null)
-        return
-      }
-
-      // --- normalizar user + rol (incluye tipo_usuario) ---
-      const rawUser = data.usuario || data.user || data || {}
-      const roleRaw =
-        rawUser.role ||
-        (rawUser.rol && (rawUser.rol.nombre || rawUser.rol)) ||
-        rawUser.tipo_usuario ||
-        rawUser.perfil ||
-        rawUser.tipo ||
-        ''
-      const rl = String(roleRaw).toLowerCase()
-      const alias = { admin: 'administrador', administrador: 'administrador', director: 'administrador', entrenador: 'entrenador', cliente: 'cliente' }
-      const role = alias[rl] || normalizeRole(rl)
-      const normalizedUser = { ...rawUser, role }
-
-      // --- guardar sesión + actualizar contexto INMEDIATO ---
-      localStorage.setItem('user', JSON.stringify(normalizedUser))
-      if (data.token) localStorage.setItem('token', data.token)
-      setUser(normalizedUser) // ← esto evita que el sidebar aparezca vacío al primer render
-
-      // --- redirección por rol ---
+      // Redirección por rol
       let path = '/dashboard'
       if (role === 'administrador' || role === 'entrenador') path = '/dashboard'
       else if (role === 'cliente') path = '/dashboard_Client'
       navigate(path, { replace: true })
     } catch (err) {
-      console.error('Error en login:', err)
-      alert('Error de conexión con el servidor')
+      console.error('Error en login JWT:', err)
+      alert(err.message || 'Error al iniciar sesión')
+      if (recaptchaRef.current) recaptchaRef.current.reset()
+      setRecaptchaToken(null)
     } finally {
       setLoading(false)
     }

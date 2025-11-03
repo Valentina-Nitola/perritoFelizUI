@@ -1,137 +1,166 @@
 // ----------------------------------------------
-// src/services/authService.js
+// src/services/authService.js (versión JWT)
 // ----------------------------------------------
-import { API_BASE, USE_MOCKS, postJSON } from './apiClient'
+import { API_BASE } from './apiClient'
 
-//----------------------------------------------
-// Utilidades mock (solo para desarrollo sin backend)
-//----------------------------------------------
-function wait(ms) {
-  return new Promise((res) => setTimeout(res, ms))
+// ------------------------
+// Helpers de storage
+// ------------------------
+const LS_KEYS = {
+  access: 'access',
+  refresh: 'refresh',
+  user: 'user',
 }
 
-//----------------------------------------------
-// MOCKS (para modo sin backend)
-//----------------------------------------------
-async function mockVerifyRecaptcha(token) {
-  await wait(600)
-  if (!token) throw new Error('Captcha inválido (mock)')
-  return { success: true }
+function saveTokens({ access, refresh }) {
+  if (access) localStorage.setItem(LS_KEYS.access, access)
+  if (refresh) localStorage.setItem(LS_KEYS.refresh, refresh)
 }
 
-async function mockLogin({ documento, password }) {
-  await wait(800)
-  if (documento !== '123' || password !== 'perrito') {
-    throw new Error('Credenciales inválidas (mock)')
+export function getAccessToken() {
+  return localStorage.getItem(LS_KEYS.access)
+}
+
+export function getRefreshToken() {
+  return localStorage.getItem(LS_KEYS.refresh)
+}
+
+export function getUser() {
+  try {
+    return JSON.parse(localStorage.getItem(LS_KEYS.user) || 'null')
+  } catch {
+    return null
   }
-  return { msg: 'Login exitoso (mock)', token: 'jwt-mock', user: { id: 1, name: 'Perrito' } }
 }
 
-//----------------------------------------------
-// Login real sin JWT (legacy) — usado por clientes
-//----------------------------------------------
-async function realLogin(payload) {
-  return postJSON(`${API_BASE}/login`, payload)
+export function setUser(user) {
+  localStorage.setItem(LS_KEYS.user, JSON.stringify(user))
 }
 
-//----------------------------------------------
-// ReCAPTCHA (si lo usas)
-//----------------------------------------------
-async function realVerifyRecaptcha(token) {
-  return postJSON(`${API_BASE}/auth/verify-recaptcha/`, { recaptchaToken: token })
+export function logout() {
+  localStorage.removeItem(LS_KEYS.access)
+  localStorage.removeItem(LS_KEYS.refresh)
+  localStorage.removeItem(LS_KEYS.user)
+  console.log('🚪 Sesión cerrada.')
 }
 
-//----------------------------------------------
-// Registro de cliente
-//----------------------------------------------
-export const checkEmail = async (email) => {
-  const response = await fetch(`${API_BASE}/check-email/`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email }),
-  })
-  if (!response.ok) throw new Error('Error checking email')
-  return await response.json()
-}
-
-export const checkDocumento = async (nroDoc) => {
-  const response = await fetch(`${API_BASE}/check-documento/`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ nroDoc }),
-  })
-  if (!response.ok) throw new Error('Error checking document')
-  return await response.json()
-}
-
-export const register = async (payload) => {
-  const response = await fetch(`${API_BASE}/register/`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  })
-  const data = await response.json()
-  if (!response.ok) throw new Error(data.message || 'Error en el registro')
+// ------------------------
+// Llamados API base
+// ------------------------
+async function handleJson(resp, defaultMsg = 'Error en la petición') {
+  let data = null
+  try { data = await resp.json() } catch { /* 204/empty */ }
+  if (!resp.ok) {
+    const msg =
+      data?.detail || data?.message || data?.error || resp.statusText || defaultMsg
+    const err = new Error(msg)
+    err.status = resp.status
+    err.payload = data
+    throw err
+  }
   return data
 }
 
-//----------------------------------------------
-// Export principal
-//----------------------------------------------
-export const authService = {
-  async verifyRecaptcha(token) {
-    if (USE_MOCKS) return mockVerifyRecaptcha(token)
-    return realVerifyRecaptcha(token)
-  },
-
-  async login(payload) {
-    if (USE_MOCKS) return mockLogin(payload)
-    return realLogin(payload)
-  },
-
-  async checkEmail(email) {
-    return checkEmail(email)
-  },
-
-  async checkDocumento(nroDoc) {
-    return checkDocumento(nroDoc)
-  },
-
-  async register(payload) {
-    return register(payload)
-  },
+// 🔹 /me: devuelve perfil del usuario autenticado
+export async function fetchMe() {
+  const access = getAccessToken()
+  if (!access) throw new Error('No hay token de acceso')
+  const resp = await fetch(`${API_BASE}/me/`, {
+    headers: { Authorization: `Bearer ${access}` },
+  })
+  return handleJson(resp, 'Error al obtener el perfil')
 }
 
-// ======================================================================
-// NUEVO BLOQUE JWT (para usuarios internos o staff)
-// ======================================================================
-
-// 🔹 Login real con JWT (usa /api/token/)
+// 🔹 /token: login JWT
 export async function jwtLogin(documento, password) {
-  const response = await fetch(`${API_BASE}/token/`, {
+  const resp = await fetch(`${API_BASE}/token/`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ documento, password }),
   })
+  const data = await handleJson(resp, 'Error al iniciar sesión')
 
-  const data = await response.json()
-  if (!response.ok) {
-    console.error('JWT Login error:', data)
-    throw new Error(data.detail || 'Error al iniciar sesión')
+  // Guarda tokens
+  saveTokens({ access: data.access, refresh: data.refresh })
+
+  // Guarda usuario si viene; si no, lo pedimos a /me
+  let user = data.user || null
+  if (!user) {
+    try {
+      user = await fetchMe()
+    } catch (e) {
+      console.warn('No llegó user en /token y falló /me:', e)
+      throw e
+    }
   }
-
-  localStorage.setItem('accessToken', data.access)
-  localStorage.setItem('refreshToken', data.refresh)
-  return data
+  setUser(user)
+  return { access: data.access, refresh: data.refresh, user }
 }
 
-// 🔹 Cerrar sesión
-export function logout() {
-  localStorage.removeItem('accessToken')
-  localStorage.removeItem('refreshToken')
+// 🔹 /token/refresh: renueva access
+export async function refreshAccessToken() {
+  const refresh = getRefreshToken()
+  if (!refresh) throw new Error('No hay refresh token')
+  const resp = await fetch(`${API_BASE}/token/refresh/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ refresh }),
+  })
+  const data = await handleJson(resp, 'No se pudo refrescar el token')
+  if (!data?.access) throw new Error('Respuesta inválida de refresh')
+  localStorage.setItem(LS_KEYS.access, data.access)
+  return data.access
 }
 
-// 🔹 Obtener token actual
-export function getAccessToken() {
-  return localStorage.getItem('accessToken')
+// 🔹 fetch autenticado con refresh automático (opcional para tus servicios)
+export async function authFetch(input, init = {}) {
+  let access = getAccessToken()
+  const withAuth = (tk) => ({
+    ...init,
+    headers: {
+      ...(init.headers || {}),
+      Authorization: `Bearer ${tk}`,
+    },
+  })
+
+  // 1er intento con access actual
+  let resp = await fetch(input, withAuth(access))
+
+  // Si expiró el access, intenta refrescar y reintenta UNA vez
+  if (resp.status === 401) {
+    try {
+      access = await refreshAccessToken()
+      resp = await fetch(input, withAuth(access))
+    } catch (e) {
+      logout()
+      throw new Error('Sesión expirada. Inicia sesión nuevamente.')
+    }
+  }
+  return resp
+}
+
+// ------------------------
+// ReCAPTCHA (si lo usas)
+// ------------------------
+export async function verifyRecaptcha(token) {
+  const resp = await fetch(`${API_BASE}/auth/verify-recaptcha/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ recaptchaToken: token }),
+  })
+  return handleJson(resp, 'Error verificando reCAPTCHA')
+}
+
+// Export agrupado para comodidad
+export const authService = {
+  jwtLogin,
+  refreshAccessToken,
+  verifyRecaptcha,
+  fetchMe,
+  authFetch,
+  logout,
+  getAccessToken,
+  getRefreshToken,
+  getUser,
+  setUser,
 }
