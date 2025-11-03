@@ -194,12 +194,13 @@ const MatricularCanino = () => {
                     </CInputGroupText>
                     <CFormSelect name="plan" value={form.plan} onChange={handleChange} required>
                       <option value="">Selecciona un plan</option>
-                      <option value="mensual">1 mes</option>
-                      <option value="bimestre">2 meses</option>
-                      <option value="trimestre">3 meses</option>
-                      <option value="medio_año">6 meses</option>
-                      <option value="año">1 año</option>
+                      <option value="1 mes">1 mes</option>
+                      <option value="1 bimestre">1 bimestre</option>
+                      <option value="1 trimestre">1 trimestre</option>
+                      <option value="1 semestre">1 semestre</option>
+                      <option value="1 año">1 año</option>
                     </CFormSelect>
+
                     <CFormFeedback invalid>Selecciona un plan.</CFormFeedback>
                   </CInputGroup>
                 </div>
@@ -219,9 +220,9 @@ const MatricularCanino = () => {
                       required
                     >
                       <option value="">Tipo de transporte</option>
-                      <option value="all">Todo el día</option>
-                      <option value="medio">Medio día</option>
-                      <option value="none">Sin transporte</option>
+                      <option value="Total">Todo el día</option>
+                      <option value="Parcial">Medio día</option>
+                      <option value="Ninguno">Sin transporte</option>
                     </CFormSelect>
                     <CFormFeedback invalid>Selecciona el tipo de transporte.</CFormFeedback>
                   </CInputGroup>
