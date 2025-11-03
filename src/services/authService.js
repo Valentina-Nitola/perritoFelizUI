@@ -1,5 +1,5 @@
 // ----------------------------------------------
-// src/services/authService.js (versión JWT)
+// src/services/authService.js (versión JWT completa)
 // ----------------------------------------------
 import { API_BASE } from './apiClient'
 
@@ -49,7 +49,12 @@ export function logout() {
 // ------------------------
 async function handleJson(resp, defaultMsg = 'Error en la petición') {
   let data = null
-  try { data = await resp.json() } catch { /* 204/empty */ }
+  try {
+    data = await resp.json()
+  } catch {
+    /* 204 o sin contenido */
+  }
+
   if (!resp.ok) {
     const msg =
       data?.detail || data?.message || data?.error || resp.statusText || defaultMsg
@@ -93,6 +98,7 @@ export async function jwtLogin(documento, password) {
       throw e
     }
   }
+
   setUser(user)
   return { access: data.access, refresh: data.refresh, user }
 }
@@ -112,7 +118,7 @@ export async function refreshAccessToken() {
   return data.access
 }
 
-// 🔹 fetch autenticado con refresh automático (opcional para tus servicios)
+// 🔹 fetch autenticado con refresh automático
 export async function authFetch(input, init = {}) {
   let access = getAccessToken()
   const withAuth = (tk) => ({
@@ -123,10 +129,10 @@ export async function authFetch(input, init = {}) {
     },
   })
 
-  // 1er intento con access actual
+  // 1️⃣ Intento con access actual
   let resp = await fetch(input, withAuth(access))
 
-  // Si expiró el access, intenta refrescar y reintenta UNA vez
+  // 2️⃣ Si expiró el access, intenta refrescar y reintenta una vez
   if (resp.status === 401) {
     try {
       access = await refreshAccessToken()
@@ -139,9 +145,7 @@ export async function authFetch(input, init = {}) {
   return resp
 }
 
-// ------------------------
-// ReCAPTCHA (si lo usas)
-// ------------------------
+// 🔹 /auth/verify-recaptcha: verifica reCAPTCHA
 export async function verifyRecaptcha(token) {
   const resp = await fetch(`${API_BASE}/auth/verify-recaptcha/`, {
     method: 'POST',
@@ -151,7 +155,19 @@ export async function verifyRecaptcha(token) {
   return handleJson(resp, 'Error verificando reCAPTCHA')
 }
 
-// Export agrupado para comodidad
+// 🔹 /auth/register/: registra un nuevo usuario
+export async function register(userData) {
+  const resp = await fetch(`${API_BASE}/register/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(userData),
+  })
+  return handleJson(resp, 'Error al registrar usuario')
+}
+
+// ------------------------
+// Export agrupado
+// ------------------------
 export const authService = {
   jwtLogin,
   refreshAccessToken,
@@ -163,4 +179,5 @@ export const authService = {
   getRefreshToken,
   getUser,
   setUser,
+  register, // ✅ agregado correctamente
 }
