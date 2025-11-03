@@ -23,11 +23,12 @@ const AppHeaderDropdown = () => {
   const avatarSrc = user?.avatarUrl || ''
 
   const handleLogout = () => {
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
-    setUser(null)                             
+    localStorage.clear()
+    sessionStorage.clear()
+    setUser(null)
     navigate('/login', { replace: true })
   }
+
 
   return (
     <CDropdown variant="nav-item">

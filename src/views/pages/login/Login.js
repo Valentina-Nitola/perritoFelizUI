@@ -95,8 +95,10 @@ const Login = () => {
       if (role === 'administrador' || role === 'entrenador') path = '/dashboard'
       else if (role === 'cliente') path = '/dashboard_Client'
       navigate(path, { replace: true })
+
     } catch (err) {
       console.error('Error en login JWT:', err)
+      
       alert(err.message || 'Error al iniciar sesión')
       if (recaptchaRef.current) recaptchaRef.current.reset()
       setRecaptchaToken(null)
