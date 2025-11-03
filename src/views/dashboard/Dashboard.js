@@ -1,6 +1,4 @@
-import React from 'react'
-import classNames from 'classnames'
-
+import React, { useEffect, useRef, useState } from 'react'
 import {
   CAvatar,
   CButton,
@@ -10,7 +8,6 @@ import {
   CCardFooter,
   CCardHeader,
   CCol,
-  CProgress,
   CRow,
   CTable,
   CTableBody,
@@ -18,371 +15,552 @@ import {
   CTableHead,
   CTableHeaderCell,
   CTableRow,
+  CBadge,
 } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
-import {
-  cibCcAmex,
-  cibCcApplePay,
-  cibCcMastercard,
-  cibCcPaypal,
-  cibCcStripe,
-  cibCcVisa,
-  cibGoogle,
-  cibFacebook,
-  cibLinkedin,
-  cifBr,
-  cifEs,
-  cifFr,
-  cifIn,
-  cifPl,
-  cifUs,
-  cibTwitter,
-  cilCloudDownload,
-  cilPeople,
-  cilUser,
-  cilUserFemale,
-  cilDog,
-} from '@coreui/icons'
+import { cilCloudDownload, cilDog, cilChart, cilUser, cilMoney, cilChartPie } from '@coreui/icons'
+import 'chart.js/auto'
+import { Chart } from 'chart.js'
 
-import avatar1 from 'src/assets/images/avatars/1.jpg'
-import avatar2 from 'src/assets/images/avatars/2.jpg'
-import avatar3 from 'src/assets/images/avatars/3.jpg'
-import avatar4 from 'src/assets/images/avatars/4.jpg'
-import avatar5 from 'src/assets/images/avatars/5.jpg'
-import avatar6 from 'src/assets/images/avatars/6.jpg'
+/**
+ * DASHBOARD ADMIN/DIRECTOR – ESCUELA CANINA
+ * Funcionando con Mocks por ahora
+ */
 
-import WidgetsBrand from '../widgets/WidgetsBrand'
-import WidgetsDropdown from '../widgets/WidgetsDropdown'
-import MainChart from './MainChart'
+// Utils
+const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
+const fmt = (n) => new Intl.NumberFormat('es-CO').format(n)
 
-const Dashboard = () => {
-  const progressExample = [
-    { title: 'Visits', value: '29.703 Users', percent: 40, color: 'success' },
-    { title: 'Unique', value: '24.093 Users', percent: 20, color: 'info' },
-    { title: 'Pageviews', value: '78.706 Views', percent: 60, color: 'warning' },
-    { title: 'New Users', value: '22.123 Users', percent: 80, color: 'danger' },
-    { title: 'Bounce Rate', value: 'Average Rate', percent: 40.15, color: 'primary' },
-  ]
+// Mocks
+const mockNow = new Date()
+const mockMonthIndex = mockNow.getMonth()
+const mockYear = mockNow.getFullYear()
 
-  const progressGroupExample1 = [
-    { title: 'Monday', value1: 34, value2: 78 },
-    { title: 'Tuesday', value1: 56, value2: 94 },
-    { title: 'Wednesday', value1: 12, value2: 67 },
-    { title: 'Thursday', value1: 43, value2: 91 },
-    { title: 'Friday', value1: 22, value2: 73 },
-    { title: 'Saturday', value1: 53, value2: 82 },
-    { title: 'Sunday', value1: 9, value2: 69 },
-  ]
+// KPIs
+const mockKpiMatriculadosMes = 37
+const mockKpiEntrenadoresActivos = 6
+const mockKpiIngresosMes = 12450000 // COP
+const mockKpiAsistenciaPct = 86 // %
 
-  const progressGroupExample2 = [
-    { title: 'Male', icon: cilUser, value: 53 },
-    { title: 'Female', icon: cilUserFemale, value: 43 },
-  ]
+const mockTransporteMes = {
+  total: 18,
+  parcial: 11,
+  sin: 8,
+}
 
-  const progressGroupExample3 = [
-    { title: 'Organic Search', icon: cibGoogle, percent: 56, value: '191,235' },
-    { title: 'Facebook', icon: cibFacebook, percent: 15, value: '51,223' },
-    { title: 'Twitter', icon: cibTwitter, percent: 11, value: '37,564' },
-    { title: 'LinkedIn', icon: cibLinkedin, percent: 8, value: '27,319' },
-  ]
 
-  const tableExample = [
-    {
-      avatar: { src: avatar1, status: 'success' },
-      user: {
-        name: 'Maximus',
-        new: true,
-        registered: '1 Oct, 2025',
+const mockPlanesMes = {
+  mensual: 14,
+  bimestral: 9,
+  trimestral: 7,
+  semestral: 5,
+  anual: 3,
+}
+
+const buildLast6Months = () => {
+  const arr = []
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(mockYear, mockMonthIndex - i, 1)
+    arr.push({
+      key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`,
+      label: `${monthNames[d.getMonth()]} ${String(d.getFullYear()).slice(2)}`,
+      value: Math.floor(20 + Math.random() * 40),
+    })
+  }
+  return arr
+}
+const mockSerie6 = buildLast6Months()
+
+const mockReports = {
+  monthly: Array.from({ length: 12 }, (_, m) => ({
+    label: monthNames[m],
+    value: Math.floor(18 + Math.random() * 45),
+  })),
+  quarterly: [
+    { label: 'Q1', value: 95 },
+    { label: 'Q2', value: 110 },
+    { label: 'Q3', value: 87 },
+    { label: 'Q4', value: 103 },
+  ],
+  semiannual: [
+    { label: 'S1', value: 205 },
+    { label: 'S2', value: 190 },
+  ],
+  annual: [
+    { label: `${mockYear - 2}`, value: 360 },
+    { label: `${mockYear - 1}`, value: 410 },
+    { label: `${mockYear}`, value: 395 },
+  ],
+}
+
+const mockLatest = [
+  { name: 'Luna', owner: 'Lucas', plan: 'Mensual', edad: '2 años', fecha: '01 Oct, ' + mockYear, avatar: 'https://place-puppy.com/80x80' },
+  { name: 'Rocky', owner: 'Matias', plan: 'Mensual', edad: '10 meses', fecha: '12 Oct, ' + mockYear, avatar: 'https://place-puppy.com/81x81' },
+  { name: 'Max', owner: 'Laura', plan: 'Semestral', edad: '3 años', fecha: '20 Oct, ' + mockYear, avatar: 'https://place-puppy.com/82x82' },
+  { name: 'Kira', owner: 'Samuel', plan: 'Bimestral', edad: '1 año', fecha: '25 Oct, ' + mockYear, avatar: 'https://place-puppy.com/83x83' },
+]
+
+// === Componentes ===
+
+const KpiCard = ({ title, value, subtitle, icon = cilDog }) => (
+  <CCard className="h-100 shadow-sm">
+    <CCardBody className="p-3">
+      <div className="border-start border-start-4 border-start-primary ps-3">
+        <div className="d-flex justify-content-between align-items-start mb-2">
+          <div className="text-body-secondary small text-uppercase fw-semibold">{title}</div>
+          <div className="opacity-50">
+            <CIcon icon={icon} size="lg" />
+          </div>
+        </div>
+        <div className="display-6 fw-bold lh-1">
+          {typeof value === 'number' ? fmt(value) : value}
+        </div>
+        {subtitle && <div className="small text-body-secondary mt-2">{subtitle}</div>}
+      </div>
+    </CCardBody>
+  </CCard>
+)
+
+const DoughnutTransport = ({ data }) => {
+  const canvasRef = useRef(null)
+  const chartRef = useRef(null)
+  const total = data.total + data.parcial + data.sin
+
+  useEffect(() => {
+    if (!canvasRef.current) return
+    if (chartRef.current) chartRef.current.destroy()
+
+    chartRef.current = new Chart(canvasRef.current, {
+      type: 'doughnut',
+      data: {
+        labels: ['Todo el día', 'Medio día', 'Sin transporte'],
+        datasets: [{ data: [data.total, data.parcial, data.sin] }],
       },
-      country: { name: 'USA', flag: cifUs },
-      usage: {
-        value: 80,
-        period: '1 Oct, 2025 - 1 Nov, 2025',
-        color: 'success',
+      options: {
+        plugins: {
+          legend: { position: 'bottom' },
+          tooltip: { enabled: true },
+        },
+        cutout: '60%',
+        responsive: true,
+        maintainAspectRatio: false,
       },
-      payment: { name: 'Mastercard', icon: cibCcMastercard },
-      activity: '26 Oct, 2025',
-    },
-    {
-      avatar: { src: avatar2, status: 'danger' },
-      user: {
-        name: 'Avram Tarasios',
-        new: false,
-        registered: 'Jan 1, 2023',
+    })
+
+    return () => chartRef.current?.destroy()
+  }, [data])
+
+  return (
+    <CCard className="h-100 shadow-sm">
+      <CCardHeader className="d-flex align-items-center gap-2">
+        <CIcon icon={cilChart} />
+        <span>Transporte – {monthNames[mockMonthIndex]} {mockYear}</span>
+      </CCardHeader>
+
+      <CCardBody className="d-flex flex-column p-3" style={{ height: 320 }}>
+        <div className="flex-grow-1 position-relative">
+          <canvas ref={canvasRef} />
+        </div>
+      </CCardBody>
+
+      <CCardFooter
+        className="text-center small text-body-secondary text-wrap"
+        style={{ wordBreak: 'break-word' }}
+      >
+        Total perros con algún transporte este mes: <strong>{fmt(data.total + data.parcial)}</strong> / {fmt(total)}
+      </CCardFooter>
+    </CCard>
+  )
+}
+
+const DoughnutPlans = ({ data }) => {
+  const canvasRef = useRef(null)
+  const chartRef = useRef(null)
+  const total =
+    (data.mensual ?? 0) +
+    (data.bimestral ?? 0) +
+    (data.trimestral ?? 0) +
+    (data.semestral ?? 0) +
+    (data.anual ?? 0)
+
+  useEffect(() => {
+    if (!canvasRef.current) return
+    if (chartRef.current) chartRef.current.destroy()
+
+    chartRef.current = new Chart(canvasRef.current, {
+      type: 'doughnut',
+      data: {
+        labels: ['Mensual', 'Bimestral', 'Trimestral', 'Semestral', 'Anual'],
+        datasets: [
+          {
+            data: [
+              data.mensual ?? 0,
+              data.bimestral ?? 0,
+              data.trimestral ?? 0,
+              data.semestral ?? 0,
+              data.anual ?? 0,
+            ],
+          },
+        ],
       },
-      country: { name: 'Brazil', flag: cifBr },
-      usage: {
-        value: 22,
-        period: 'Jun 11, 2023 - Jul 10, 2023',
-        color: 'info',
+      options: {
+        plugins: {
+          legend: { position: 'bottom' },
+          tooltip: { enabled: true },
+        },
+        cutout: '60%',
+        responsive: true,
+        maintainAspectRatio: false,
       },
-      payment: { name: 'Visa', icon: cibCcVisa },
-      activity: '5 minutes ago',
-    },
-    {
-      avatar: { src: avatar3, status: 'warning' },
-      user: { name: 'Quintin Ed', new: true, registered: 'Jan 1, 2023' },
-      country: { name: 'India', flag: cifIn },
-      usage: {
-        value: 74,
-        period: 'Jun 11, 2023 - Jul 10, 2023',
-        color: 'warning',
+    })
+
+    return () => chartRef.current?.destroy()
+  }, [data])
+
+  return (
+    <CCard className="h-100 shadow-sm">
+      <CCardHeader className="d-flex align-items-center gap-2">
+        <CIcon icon={cilChartPie} />
+        <span>Distribución de planes – {monthNames[mockMonthIndex]} {mockYear}</span>
+      </CCardHeader>
+      <CCardBody className="d-flex flex-column p-3" style={{ height: 320 }}>
+        <div className="flex-grow-1 position-relative">
+          <canvas ref={canvasRef} />
+        </div>
+      </CCardBody>
+      <CCardFooter className="text-center small text-body-secondary">
+        Total matrículas del mes: <strong>{fmt(total)}</strong>
+      </CCardFooter>
+    </CCard>
+  )
+}
+
+const LineLast6Months = ({ serie }) => {
+  const canvasRef = useRef(null)
+  const chartRef = useRef(null)
+
+  useEffect(() => {
+    if (!canvasRef.current) return
+    if (chartRef.current) chartRef.current.destroy()
+
+    chartRef.current = new Chart(canvasRef.current, {
+      type: 'line',
+      data: {
+        labels: serie.map((s) => s.label),
+        datasets: [
+          {
+            label: 'Matriculados',
+            data: serie.map((s) => s.value),
+            fill: true,
+            tension: 0.35,
+          },
+        ],
       },
-      payment: { name: 'Stripe', icon: cibCcStripe },
-      activity: '1 hour ago',
-    },
-    {
-      avatar: { src: avatar4, status: 'secondary' },
-      user: { name: 'Enéas Kwadwo', new: true, registered: 'Jan 1, 2023' },
-      country: { name: 'France', flag: cifFr },
-      usage: {
-        value: 98,
-        period: 'Jun 11, 2023 - Jul 10, 2023',
-        color: 'danger',
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { beginAtZero: true, ticks: { precision: 0 } },
+        },
       },
-      payment: { name: 'PayPal', icon: cibCcPaypal },
-      activity: 'Last month',
-    },
-    {
-      avatar: { src: avatar5, status: 'success' },
-      user: {
-        name: 'Agapetus Tadeáš',
-        new: true,
-        registered: 'Jan 1, 2023',
-      },
-      country: { name: 'Spain', flag: cifEs },
-      usage: {
-        value: 22,
-        period: 'Jun 11, 2023 - Jul 10, 2023',
-        color: 'primary',
-      },
-      payment: { name: 'Google Wallet', icon: cibCcApplePay },
-      activity: 'Last week',
-    },
-    {
-      avatar: { src: avatar6, status: 'danger' },
-      user: {
-        name: 'Friderik Dávid',
-        new: true,
-        registered: 'Jan 1, 2023',
-      },
-      country: { name: 'Poland', flag: cifPl },
-      usage: {
-        value: 43,
-        period: 'Jun 11, 2023 - Jul 10, 2023',
-        color: 'success',
-      },
-      payment: { name: 'Amex', icon: cibCcAmex },
-      activity: 'Last week',
-    },
-  ]
+    })
+
+    return () => chartRef.current?.destroy()
+  }, [serie])
+
+  return (
+    <CCard className="h-100 shadow-sm">
+      <CCardHeader className="d-flex align-items-center gap-2">
+        <CIcon icon={cilChart} />
+        <span>Últimos 6 meses</span>
+      </CCardHeader>
+      <CCardBody style={{ height: 320 }}>
+        <canvas ref={canvasRef} />
+      </CCardBody>
+    </CCard>
+  )
+}
+
+const ReportsTable = ({ period, rows }) => (
+  <CCard className="shadow-sm">
+    <CCardHeader className="d-flex justify-content-between align-items-center">
+      <span>Reportes descriptivos – {periodLabel(period)}</span>
+      <div className="small text-body-secondary">Visual con datos mock en lo que se conecta el backend</div>
+    </CCardHeader>
+    <CCardBody>
+      <CTable align="middle" hover responsive className="mb-0 border">
+        <CTableHead className="text-nowrap">
+          <CTableRow>
+            <CTableHeaderCell>Periodo</CTableHeaderCell>
+            <CTableHeaderCell className="text-end">Matriculados</CTableHeaderCell>
+            <CTableHeaderCell className="text-end">Variación</CTableHeaderCell>
+          </CTableRow>
+        </CTableHead>
+        <CTableBody>
+          {rows.map((r, idx) => (
+            <ReportRow key={idx} label={r.label} value={r.value} prev={rows[idx - 1]?.value ?? r.value} />
+          ))}
+        </CTableBody>
+      </CTable>
+    </CCardBody>
+  </CCard>
+)
+
+const ReportRow = ({ label, value, prev }) => {
+  const diff = value - prev
+  const pct = prev === 0 ? 0 : (diff / prev) * 100
+  const up = diff >= 0
+  return (
+    <CTableRow>
+      <CTableDataCell>{label}</CTableDataCell>
+      <CTableDataCell className="text-end fw-semibold">{fmt(value)}</CTableDataCell>
+      <CTableDataCell className="text-end">
+        <CBadge color={up ? 'success' : 'danger'} className="px-2 py-1">
+          {up ? '▲' : '▼'} {Math.abs(pct).toFixed(1)}%
+        </CBadge>
+      </CTableDataCell>
+    </CTableRow>
+  )
+}
+
+const LatestTable = ({ items }) => (
+  <CCard className="shadow-sm">
+    <CCardHeader>Últimas matrículas</CCardHeader>
+    <CCardBody>
+      <CTable align="middle" hover responsive className="mb-0 border">
+        <CTableHead className="text-nowrap">
+          <CTableRow>
+            <CTableHeaderCell className="bg-body-tertiary text-center"><CIcon icon={cilDog} /></CTableHeaderCell>
+            <CTableHeaderCell className="bg-body-tertiary">Mascota</CTableHeaderCell>
+            <CTableHeaderCell className="bg-body-tertiary">Dueño</CTableHeaderCell>
+            <CTableHeaderCell className="bg-body-tertiary">Plan</CTableHeaderCell>
+            <CTableHeaderCell className="bg-body-tertiary">Edad</CTableHeaderCell>
+            <CTableHeaderCell className="bg-body-tertiary">Fecha Matrícula</CTableHeaderCell>
+          </CTableRow>
+        </CTableHead>
+        <CTableBody>
+          {items.map((it, i) => (
+            <CTableRow key={i}>
+              <CTableDataCell className="text-center">
+                <CAvatar size="md" src={it.avatar} />
+              </CTableDataCell>
+              <CTableDataCell className="fw-semibold">{it.name}</CTableDataCell>
+              <CTableDataCell>{it.owner}</CTableDataCell>
+              <CTableDataCell>{it.plan}</CTableDataCell>
+              <CTableDataCell>{it.edad}</CTableDataCell>
+              <CTableDataCell>{it.fecha}</CTableDataCell>
+            </CTableRow>
+          ))}
+        </CTableBody>
+      </CTable>
+    </CCardBody>
+  </CCard>
+)
+
+// Etiqueta legible para reporte
+function periodLabel(p) {
+  return p === 'monthly'
+    ? 'Mensual'
+    : p === 'quarterly'
+    ? 'Trimestral'
+    : p === 'semiannual'
+    ? 'Semestral'
+    : 'Anual'
+}
+
+// === Componente principal ===
+const DashboardAdminDirector = () => {
+  const [loading, setLoading] = useState(false)
+  const [kpiMonth, setKpiMonth] = useState(mockKpiMatriculadosMes)
+  const [trainerActive, setTrainerActive] = useState(mockKpiEntrenadoresActivos)
+  const [revenueMonth, setRevenueMonth] = useState(mockKpiIngresosMes)
+  const [attendancePct, setAttendancePct] = useState(mockKpiAsistenciaPct)
+  const [transportMonth, setTransportMonth] = useState(mockTransporteMes)
+  const [plansMonth, setPlansMonth] = useState(mockPlanesMes)
+  const [serie6, setSerie6] = useState(mockSerie6)
+  const [reportPeriod, setReportPeriod] = useState('monthly')
+  const [reportRows, setReportRows] = useState(mockReports['monthly'])
+
+  /**
+   * TODO (BACK): Endpoints sugeridos
+   * 1) GET /stats/enrollments?from=YYYY-MM-01&to=YYYY-MM-<lastDay> => { count }
+   * 2) GET /stats/transport?month=YYYY-MM => { total, parcial, sin }
+   * 3) GET /stats/enrollments/series?months=6 => [{ key, label, value }]
+   * 4) GET /reports/enrollments?period=monthly|quarterly|semiannual|annual&year=YYYY => [{ label, value }]
+   * 5) GET /stats/trainers?status=active&month=YYYY-MM => { count }
+   * 6) GET /stats/revenue?month=YYYY-MM => { amount }                  // KPI Ingresos
+   * 7) GET /stats/attendance?month=YYYY-MM => { pct }                  // KPI Asistencia
+   * 8) GET /stats/plans?month=YYYY-MM => { mensual, bimestral, trimestral, semestral, anual } // Donut planes
+   */
+
+  // useEffect para carga real (descomentar cuando esté el back)
+  // useEffect(() => {
+  //   const controller = new AbortController()
+  //   async function loadAll() {
+  //     try {
+  //       setLoading(true)
+  //       const now = new Date()
+  //       const y = now.getFullYear()
+  //       const m = String(now.getMonth() + 1).padStart(2, '0')
+  //       const lastDay = new Date(y, now.getMonth() + 1, 0).getDate()
+  //
+  //       const kpiRes = await fetch(`/stats/enrollments?from=${y}-${m}-01&to=${y}-${m}-${lastDay}`, { signal: controller.signal, credentials: 'include' })
+  //       const kpiJson = await kpiRes.json()
+  //       setKpiMonth(kpiJson.count)
+  //
+  //       const trRes = await fetch(`/stats/trainers?status=active&month=${y}-${m}`, { signal: controller.signal, credentials: 'include' })
+  //       const trJson = await trRes.json()
+  //       setTrainerActive(trJson.count)
+  //
+  //       const revRes = await fetch(`/stats/revenue?month=${y}-${m}`, { signal: controller.signal, credentials: 'include' })
+  //       const revJson = await revRes.json()
+  //       setRevenueMonth(revJson.amount)
+  //
+  //       const attRes = await fetch(`/stats/attendance?month=${y}-${m}`, { signal: controller.signal, credentials: 'include' })
+  //       const attJson = await attRes.json()
+  //       setAttendancePct(attJson.pct)
+  //
+  //       const tRes = await fetch(`/stats/transport?month=${y}-${m}`, { signal: controller.signal, credentials: 'include' })
+  //       const tJson = await tRes.json()
+  //       setTransportMonth(tJson)
+  //
+  //       const pRes = await fetch(`/stats/plans?month=${y}-${m}`, { signal: controller.signal, credentials: 'include' })
+  //       const pJson = await pRes.json()
+  //       setPlansMonth(pJson)
+  //
+  //       const sRes = await fetch(`/stats/enrollments/series?months=6`, { signal: controller.signal, credentials: 'include' })
+  //       const sJson = await sRes.json()
+  //       setSerie6(sJson)
+  //
+  //       const rRes = await fetch(`/reports/enrollments?period=monthly&year=${y}`, { signal: controller.signal, credentials: 'include' })
+  //       const rJson = await rRes.json()
+  //       setReportRows(rJson)
+  //     } catch (e) {
+  //       console.error(e)
+  //     } finally {
+  //       setLoading(false)
+  //     }
+  //   }
+  //   loadAll()
+  //   return () => controller.abort()
+  // }, [])
+
+  const handleChangePeriod = (p) => {
+    setReportPeriod(p)
+    setReportRows(mockReports[p])
+  }
 
   return (
     <>
-      <WidgetsDropdown className="mb-4" />
-      <CCard className="mb-4">
-        <CCardBody>
-          <CRow>
-            <CCol sm={5}>
-              <h4 id="traffic" className="card-title mb-0">
-                Traffic
-              </h4>
-              <div className="small text-body-secondary">January - July 2023</div>
-            </CCol>
-            <CCol sm={7} className="d-none d-md-block">
-              <CButton color="primary" className="float-end">
-                <CIcon icon={cilCloudDownload} />
-              </CButton>
-              <CButtonGroup className="float-end me-3">
-                {['Day', 'Month', 'Year'].map((value) => (
+      {/* FILA 1: KPIs */}
+      <CRow className="mb-4" xs={{ gutter: 4 }}>
+        <CCol xs={12} md={3}>
+          <KpiCard
+            title={`Matriculados (${monthNames[mockMonthIndex]} ${mockYear})`}
+            value={kpiMonth}
+            subtitle="Perros matriculados este mes"
+            icon={cilDog}
+          />
+        </CCol>
+        <CCol xs={12} md={3}>
+          <KpiCard
+            title="Entrenadores activos"
+            value={trainerActive}
+            subtitle="Entrenadores con estado activo"
+            icon={cilUser}
+          />
+        </CCol>
+        <CCol xs={12} md={3}>
+          <KpiCard
+            title={`Ingresos (${monthNames[mockMonthIndex]} ${mockYear})`}
+            value={`$ ${fmt(revenueMonth)}`}
+            subtitle="COP – pagos confirmados"
+            icon={cilMoney}
+          />
+        </CCol>
+        <CCol xs={12} md={3}>
+          <KpiCard
+            title="Asistencia promedio"
+            value={`${attendancePct}%`}
+            subtitle="Promedio del mes"
+            icon={cilChart}
+          />
+        </CCol>
+      </CRow>
+
+      {/* FILA 2: Gráficos principales */}
+      <CRow className="mb-4" xs={{ gutter: 4 }}>
+        <CCol xs={12} md={6}>
+          <DoughnutTransport data={transportMonth} />
+        </CCol>
+        <CCol xs={12} md={6}>
+          <DoughnutPlans data={plansMonth} />
+        </CCol>
+      </CRow>
+
+      {/* FILA 3: Serie 6 meses */}
+      <CRow className="mb-4">
+        <CCol xs={12}>
+          <LineLast6Months serie={serie6} />
+        </CCol>
+      </CRow>
+
+      {/* FILA 4: Reportes descriptivos */}
+      <CCard className="mb-3 shadow-sm">
+        <CCardHeader>
+          <div className="d-flex justify-content-between align-items-center">
+            <div>
+              <strong>Reportes estadísticos descriptivos</strong>
+              <div className="small text-body-secondary">Mensual, trimestral, semestral y anual</div>
+            </div>
+            <div>
+              <CButtonGroup role="group" aria-label="report period">
+                {[
+                  { k: 'monthly', label: 'Mensual' },
+                  { k: 'quarterly', label: 'Trimestral' },
+                  { k: 'semiannual', label: 'Semestral' },
+                  { k: 'annual', label: 'Anual' },
+                ].map((opt) => (
                   <CButton
-                    color="outline-secondary"
-                    key={value}
-                    className="mx-0"
-                    active={value === 'Month'}
+                    key={opt.k}
+                    color={reportPeriod === opt.k ? 'primary' : 'outline-primary'}
+                    active={reportPeriod === opt.k}
+                    className="text-nowrap"
+                    onClick={() => handleChangePeriod(opt.k)}
                   >
-                    {value}
+                    {opt.label}
                   </CButton>
                 ))}
               </CButtonGroup>
-            </CCol>
-          </CRow>
-          <MainChart />
+            </div>
+          </div>
+        </CCardHeader>
+        <CCardBody>
+          <ReportsTable period={reportPeriod} rows={reportRows} />
         </CCardBody>
-        <CCardFooter>
-          <CRow
-            xs={{ cols: 1, gutter: 4 }}
-            sm={{ cols: 2 }}
-            lg={{ cols: 4 }}
-            xl={{ cols: 5 }}
-            className="mb-2 text-center"
-          >
-            {progressExample.map((item, index, items) => (
-              <CCol
-                className={classNames({
-                  'd-none d-xl-block': index + 1 === items.length,
-                })}
-                key={index}
-              >
-                <div className="text-body-secondary">{item.title}</div>
-                <div className="fw-semibold text-truncate">
-                  {item.value} ({item.percent}%)
-                </div>
-                <CProgress thin className="mt-2" color={item.color} value={item.percent} />
-              </CCol>
-            ))}
-          </CRow>
+        <CCardFooter className="d-flex justify-content-end gap-2">
+          <CButton color="secondary" variant="outline">
+            <CIcon icon={cilCloudDownload} className="me-2" /> Exportar CSV
+          </CButton>
+          <CButton color="secondary" variant="outline">
+            <CIcon icon={cilCloudDownload} className="me-2" /> Exportar PDF
+          </CButton>
         </CCardFooter>
       </CCard>
-      <WidgetsBrand className="mb-4" withCharts />
+
+      {/* FILA 5: Últimas matrículas */}
       <CRow>
-        <CCol xs>
-          <CCard className="mb-4">
-            <CCardHeader>Traffic {' & '} Sales</CCardHeader>
-            <CCardBody>
-              <CRow>
-                <CCol xs={12} md={6} xl={6}>
-                  <CRow>
-                    <CCol xs={6}>
-                      <div className="border-start border-start-4 border-start-info py-1 px-3">
-                        <div className="text-body-secondary text-truncate small">New Clients</div>
-                        <div className="fs-5 fw-semibold">9,123</div>
-                      </div>
-                    </CCol>
-                    <CCol xs={6}>
-                      <div className="border-start border-start-4 border-start-danger py-1 px-3 mb-3">
-                        <div className="text-body-secondary text-truncate small">
-                          Recurring Clients
-                        </div>
-                        <div className="fs-5 fw-semibold">22,643</div>
-                      </div>
-                    </CCol>
-                  </CRow>
-                  <hr className="mt-0" />
-                  {progressGroupExample1.map((item, index) => (
-                    <div className="progress-group mb-4" key={index}>
-                      <div className="progress-group-prepend">
-                        <span className="text-body-secondary small">{item.title}</span>
-                      </div>
-                      <div className="progress-group-bars">
-                        <CProgress thin color="info" value={item.value1} />
-                        <CProgress thin color="danger" value={item.value2} />
-                      </div>
-                    </div>
-                  ))}
-                </CCol>
-                <CCol xs={12} md={6} xl={6}>
-                  <CRow>
-                    <CCol xs={6}>
-                      <div className="border-start border-start-4 border-start-warning py-1 px-3 mb-3">
-                        <div className="text-body-secondary text-truncate small">Pageviews</div>
-                        <div className="fs-5 fw-semibold">78,623</div>
-                      </div>
-                    </CCol>
-                    <CCol xs={6}>
-                      <div className="border-start border-start-4 border-start-success py-1 px-3 mb-3">
-                        <div className="text-body-secondary text-truncate small">Organic</div>
-                        <div className="fs-5 fw-semibold">49,123</div>
-                      </div>
-                    </CCol>
-                  </CRow>
-
-                  <hr className="mt-0" />
-
-                  {progressGroupExample2.map((item, index) => (
-                    <div className="progress-group mb-4" key={index}>
-                      <div className="progress-group-header">
-                        <CIcon className="me-2" icon={item.icon} size="lg" />
-                        <span>{item.title}</span>
-                        <span className="ms-auto fw-semibold">{item.value}%</span>
-                      </div>
-                      <div className="progress-group-bars">
-                        <CProgress thin color="warning" value={item.value} />
-                      </div>
-                    </div>
-                  ))}
-
-                  <div className="mb-5"></div>
-
-                  {progressGroupExample3.map((item, index) => (
-                    <div className="progress-group" key={index}>
-                      <div className="progress-group-header">
-                        <CIcon className="me-2" icon={item.icon} size="lg" />
-                        <span>{item.title}</span>
-                        <span className="ms-auto fw-semibold">
-                          {item.value}{' '}
-                          <span className="text-body-secondary small">({item.percent}%)</span>
-                        </span>
-                      </div>
-                      <div className="progress-group-bars">
-                        <CProgress thin color="success" value={item.percent} />
-                      </div>
-                    </div>
-                  ))}
-                </CCol>
-              </CRow>
-
-              <br />
-
-              <CTable align="middle" className="mb-0 border" hover responsive>
-                <CTableHead className="text-nowrap">
-                  <CTableRow>
-                    <CTableHeaderCell className="bg-body-tertiary text-center">
-                      <CIcon icon={cilDog} />
-                    </CTableHeaderCell>
-                    <CTableHeaderCell className="bg-body-tertiary">Mascota</CTableHeaderCell>
-                    <CTableHeaderCell className="bg-body-tertiary text-center">
-                      Edad
-                    </CTableHeaderCell>
-                    <CTableHeaderCell className="bg-body-tertiary">Matricula</CTableHeaderCell>
-                    <CTableHeaderCell className="bg-body-tertiary text-center">
-                      Plan de Matricula
-                    </CTableHeaderCell>
-                    <CTableHeaderCell className="bg-body-tertiary">Ultima Asistencia</CTableHeaderCell>
-                  </CTableRow>
-                </CTableHead>
-                <CTableBody>
-                  {tableExample.map((item, index) => (
-                    <CTableRow v-for="item in tableItems" key={index}>
-                      <CTableDataCell className="text-center">
-                        <CAvatar size="md" src={item.avatar.src} status={item.avatar.status} />
-                      </CTableDataCell>
-                      <CTableDataCell>
-                        <div>{item.user.name}</div>
-                        <div className="small text-body-secondary text-nowrap">
-                          <span>{item.user.new ? 'Nuevo' : 'Recurrente'}</span> | Registrado:{' '}
-                          {item.user.registered}
-                        </div>
-                      </CTableDataCell>
-                      <CTableDataCell className="text-center">
-                        <CIcon size="xl" icon={item.country.flag} title={item.country.name} />
-                      </CTableDataCell>
-                      <CTableDataCell>
-                        <div className="d-flex justify-content-between text-nowrap">
-                          <div className="fw-semibold">{item.usage.value}%</div>
-                          <div className="ms-3">
-                            <small className="text-body-secondary">{item.usage.period}</small>
-                          </div>
-                        </div>
-                        <CProgress thin color={item.usage.color} value={item.usage.value} />
-                      </CTableDataCell>
-                      <CTableDataCell className="text-center">
-                        <CIcon size="xl" icon={item.payment.icon} />
-                      </CTableDataCell>
-                      <CTableDataCell>
-                        <div className="small text-body-secondary text-nowrap">Ultima asistencia</div>
-                        <div className="fw-semibold text-nowrap">{item.activity}</div>
-                      </CTableDataCell>
-                    </CTableRow>
-                  ))}
-                </CTableBody>
-              </CTable>
-            </CCardBody>
-          </CCard>
+        <CCol xs={12}>
+          <LatestTable items={mockLatest} />
         </CCol>
       </CRow>
+
+      {loading && (
+        <div className="text-center my-3 small text-body-secondary">Cargando estadísticas…</div>
+      )}
     </>
   )
 }
 
-export default Dashboard
+export default DashboardAdminDirector

@@ -34,7 +34,7 @@ const _nav = [
   },
   {
     component: CNavItem,
-    name: 'Dashboard_Client',
+    name: 'Dashboard',
     to: '/dashboard_Client',
     anyOf: ['dashboard_client:ver'],
     icon: <CIcon icon={cilSpeedometer} customClassName="nav-icon" />,
