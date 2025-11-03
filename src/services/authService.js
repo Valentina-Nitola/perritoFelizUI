@@ -115,23 +115,37 @@ export async function jwtLogin(documento, password) {
   })
 
   const data = await response.json()
+
   if (!response.ok) {
     console.error('JWT Login error:', data)
     throw new Error(data.detail || 'Error al iniciar sesión')
   }
 
-  localStorage.setItem('accessToken', data.access)
-  localStorage.setItem('refreshToken', data.refresh)
+  // ✅ Guarda tokens en localStorage con nombres consistentes
+  localStorage.setItem('access', data.access)
+  localStorage.setItem('refresh', data.refresh)
+
+  // ✅ Guarda también la info del usuario si viene del backend
+  if (data.user) {
+    localStorage.setItem('user', JSON.stringify(data.user))
+    console.log('👤 Usuario guardado en localStorage:', data.user)
+  }
+
+  console.log('🟢 Tokens guardados:', data)
   return data
 }
 
 // 🔹 Cerrar sesión
 export function logout() {
-  localStorage.removeItem('accessToken')
-  localStorage.removeItem('refreshToken')
+  localStorage.removeItem('access')
+  localStorage.removeItem('refresh')
+  localStorage.removeItem('user')
+  console.log('🚪 Sesión cerrada correctamente.')
 }
 
 // 🔹 Obtener token actual
 export function getAccessToken() {
-  return localStorage.getItem('accessToken')
+  const token = localStorage.getItem('access')
+  console.log('📦 getAccessToken ->', token)
+  return token
 }
