@@ -72,53 +72,88 @@ const MatricularCanino = () => {
     e.preventDefault()
     setValidated(true)
 
-    // Validaciones mínimas de campos de texto/select
-    const allFilled = Object.values({ ...form }).every((v) => String(v).trim() !== '')
+    // Validaciones mínimas
+    const allFilled = Object.values(form).every((v) => String(v).trim() !== '')
     if (!allFilled) return
 
-    // Validación estricta de edad (servidor/DOM-proof)
     const nErr = validateNacimiento(form.nacimiento, maxNacimiento)
     setNacimientoError(nErr)
     if (nErr) return
 
-    // Validación archivo: requerido, PDF y tamaño (<= 5MB)
-    if (!vacunasPdf) return
+    if (!vacunasPdf) {
+      alert('Adjunta el carné de vacunación en PDF.')
+      return
+    }
+
     const isPdf = vacunasPdf.type === 'application/pdf'
     const under5mb = vacunasPdf.size <= 5 * 1024 * 1024
-    if (!isPdf || !under5mb) return
+    if (!isPdf || !under5mb) {
+      alert('El archivo debe ser PDF y pesar menos de 5MB.')
+      return
+    }
 
-    // ---- Envío a backend: FormData multipart ----
     try {
       setSubmitting(true)
+
+      // 1️⃣ Subir PDF a Supabase
+      const { supabase } = await import('../../supabaseClient')
+      const fileName = `carnet_${Date.now()}_${vacunasPdf.name}`
+
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('carnet_vacunacion')
+        .upload(fileName, vacunasPdf, { contentType: 'application/pdf' })
+
+      if (uploadError) throw uploadError
+
+      // 2️⃣ Obtener URL pública o firmada (según tu configuración)
+      const { data: urlData, error: urlError } = await supabase.storage
+        .from('carnet_vacunacion')
+        .getPublicUrl(fileName)
+
+      if (urlError) throw urlError
+
+      const vacunasUrl = urlData.publicUrl
+      console.log('✅ PDF subido correctamente:', vacunasUrl)
+
+      // 3️⃣ Preparar los datos para enviar al backend
       const fd = new FormData()
-      fd.append('plan', form.plan)
-      fd.append('transporte', form.transporte)
       fd.append('nombre', form.nombre)
       fd.append('raza', form.raza)
-      fd.append('nacimiento', form.nacimiento)
       fd.append('talla', form.talla)
-      fd.append('vacunas_pdf', vacunasPdf)
+      fd.append('nacimiento', form.nacimiento)
+      fd.append('plan', form.plan)
+      fd.append('transporte', form.transporte)
+      fd.append('vacunas_url', vacunasUrl)
 
-      const res = await fetch('/api/matriculas', {
+      // 4️⃣ Enviar los datos al backend Django
+      // ✅ Usa siempre el token más nuevo
+      const accessToken =
+        localStorage.getItem('access') ||
+        localStorage.getItem('accessToken') ||
+        localStorage.getItem('token')
+
+      console.log("🔐 Enviando token:", accessToken ? accessToken.slice(0, 30) + "..." : "❌ ninguno")
+
+      const res = await fetch(`${import.meta.env.VITE_API_BASE}/matriculas/`, {
         method: 'POST',
-        body: fd,
-        // credentials: 'include',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: fd, // ✅ usamos FormData
       })
 
-      if (!res.ok) {
-        const msg = await res.text().catch(() => '')
-        throw new Error(msg || 'No se pudo crear la matrícula.')
-      }
+      if (!res.ok) throw new Error('No se pudo crear la matrícula.')
 
       handleReset()
-      alert('Matrícula creada correctamente.')
+      alert('✅ Matrícula creada correctamente.')
     } catch (err) {
       console.error(err)
-      alert('Ocurrió un problema al crear la matrícula.')
+      alert('❌ Ocurrió un problema al crear la matrícula.')
     } finally {
       setSubmitting(false)
     }
   }
+
 
   const handleReset = () => {
     setForm({

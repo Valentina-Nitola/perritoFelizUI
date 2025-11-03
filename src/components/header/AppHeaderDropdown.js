@@ -16,18 +16,19 @@ import { useAuthUser } from 'src/context/AuthUserContext'
 
 const AppHeaderDropdown = () => {
   const navigate = useNavigate()
-  const { user, setUser } = useAuthUser()    // 👈 también tomamos setUser del contexto
+  const { user, setUser } = useAuthUser()   
   const [imgOk, setImgOk] = useState(true)
 
   const initials = ((user?.name?.[0] || '') + (user?.lastname?.[0] || '')).toUpperCase() || 'PF'
   const avatarSrc = user?.avatarUrl || ''
 
   const handleLogout = () => {
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
-    setUser(null)                             
+    localStorage.clear()
+    sessionStorage.clear()
+    setUser(null)
     navigate('/login', { replace: true })
   }
+
 
   return (
     <CDropdown variant="nav-item">
