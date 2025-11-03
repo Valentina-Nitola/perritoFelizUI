@@ -1,17 +1,19 @@
-import { crearUsuarioInterno } from 'src/services/usersService'
-import React, { useState } from 'react'
+import { crearUsuarioInterno, listarUsuariosInternos } from 'src/services/usersService'
+import React, { useEffect, useMemo, useState } from 'react'
 import {
   CRow, CCol, CCard, CCardHeader, CCardBody,
   CForm, CInputGroup, CInputGroupText, CFormInput, CFormSelect,
-  CFormFeedback, CButton
+  CFormFeedback, CButton, CTable, CTableBody, CTableDataCell, CTableHead, CTableHeaderCell, CTableRow,
+  CSpinner, CPagination, CPaginationItem
 } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
-import { cilUser, cilEnvelopeClosed, cilLockLocked, cilBadge, cilCalendar, cilBirthdayCake } from '@coreui/icons'
+import { cilUser, cilEnvelopeClosed, cilLockLocked, cilBadge, cilCalendar, cilBirthdayCake, cilSearch } from '@coreui/icons'
 
 const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 const strongPassRe = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/
 
 const InternalUsers = () => {
+  // ---------- FORM CREACIÓN ----------
   const [form, setForm] = useState({
     name: '',
     lastname: '',
@@ -24,57 +26,12 @@ const InternalUsers = () => {
     role: '',
   })
   const [validated, setValidated] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
 
   const handleChange = (e) => {
     const { name, value } = e.target
     setForm((prev) => ({ ...prev, [name]: value }))
   }
-
-
-  // por favor aqui conectar con el backend
-  const handleSubmit = async (e) => {
-  e.preventDefault()
-  setValidated(true)
-
-  const allFilled = Object.values(form).every((v) => v.trim() !== '')
-  const validEmail = emailRe.test(form.email)
-  const validPass = strongPassRe.test(form.password)
-
-  if (!allFilled) {
-    alert('Por favor completa todos los campos.')
-    return
-  }
-  if (!validEmail) {
-    alert('El correo electrónico no tiene un formato válido.')
-    return
-  }
-  if (!validPass) {
-    alert('La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula y un número.')
-    return
-  }
-
-  try {
-    const datos = {
-      tipo_usuario: form.role.toUpperCase(),
-      tipo_documento: form.tipoDoc,
-      documento: form.doc,
-      nombres: form.name,
-      apellidos: form.lastname,
-      fecha_nacimiento: form.nacimiento,
-      fecha_vinculacion: form.vinculacion,
-      email: form.email,
-      password: form.password,
-    }
-
-    const nuevoUsuario = await crearUsuarioInterno(datos)
-    console.log('✅ Usuario interno creado:', nuevoUsuario)
-    alert(`Usuario ${form.name} (${form.role}) creado exitosamente.`)
-    handleReset()
-  } catch (err) {
-    console.error('❌ Error al crear usuario:', err)
-    alert('Error al crear usuario interno.')
-  }
-}
 
   const handleReset = () => {
     setForm({
@@ -91,6 +48,107 @@ const InternalUsers = () => {
     setValidated(false)
   }
 
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setValidated(true)
+
+    // validaciones
+    const allFilled = Object.values(form).every((v) => String(v).trim() !== '')
+    const validEmail = emailRe.test(form.email)
+    const validPass = strongPassRe.test(form.password)
+
+    if (!allFilled) return alert('Por favor completa todos los campos.')
+    if (!validEmail) return alert('El correo electrónico no tiene un formato válido.')
+    if (!validPass) return alert('La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula y un número.')
+
+    try {
+      setSubmitting(true)
+      const payload = {
+        tipo_usuario: form.role.toUpperCase(),
+        tipo_documento: form.tipoDoc,
+        documento: form.doc,
+        nombres: form.name,
+        apellidos: form.lastname,
+        fecha_nacimiento: form.nacimiento,
+        fecha_vinculacion: form.vinculacion,
+        email: form.email,
+        password: form.password,
+      }
+      const nuevoUsuario = await crearUsuarioInterno(payload)
+      console.log('✅ Usuario interno creado:', nuevoUsuario)
+      alert(`Usuario ${form.name} (${form.role}) creado exitosamente.`)
+      handleReset()
+      // refrescar la tabla luego de crear
+      refreshList()
+    } catch (err) {
+      console.error('❌ Error al crear usuario:', err)
+      alert(err.message || 'Error al crear usuario interno.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  // ---------- LISTADO + FILTROS ----------
+  const [users, setUsers] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [total, setTotal] = useState(0)
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(8)
+
+  // Filtros (mínimo 2: búsqueda y rol). Extras: fecha desde/hasta
+  const [filters, setFilters] = useState({
+    q: '',
+    role: '',
+    from: '',
+    to: '',
+  })
+
+  // Debounce para búsqueda
+  const [qTyping, setQTyping] = useState('')
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setFilters((prev) => ({ ...prev, q: qTyping }))
+      setPage(1)
+    }, 400)
+    return () => clearTimeout(t)
+  }, [qTyping])
+
+  const refreshList = async () => {
+    try {
+      setLoading(true)
+      const params = {
+        page,
+        pageSize,
+        q: filters.q?.trim() || undefined,
+        role: filters.role || undefined,            // e.g. DIRECTOR | ADMIN | ENTRENADOR
+        from: filters.from || undefined,            // YYYY-MM-DD
+        to: filters.to || undefined,                // YYYY-MM-DD
+      }
+      const resp = await listarUsuariosInternos(params)
+      setUsers(resp.items || [])
+      setTotal(resp.total || 0)
+    } catch (err) {
+      console.error('Error listando usuarios internos:', err)
+      setUsers([])
+      setTotal(0)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    refreshList()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, pageSize, filters.role, filters.from, filters.to, filters.q])
+
+  const totalPages = useMemo(() => Math.max(1, Math.ceil((total || 0) / pageSize)), [total, pageSize])
+
+  const resetFilters = () => {
+    setFilters({ q: '', role: '', from: '', to: '' })
+    setQTyping('')
+    setPage(1)
+  }
+
   return (
     <>
       <CCard className="mb-4">
@@ -101,7 +159,7 @@ const InternalUsers = () => {
               <CCol md={6}>
                 {/* Rol */}
                 <div className="mb-3">
-                  <CInputGroup hasValidation>
+                  <CInputGroup>
                     <CInputGroupText><CIcon icon={cilBadge} /></CInputGroupText>
                     <CFormSelect
                       name="role"
@@ -124,7 +182,7 @@ const InternalUsers = () => {
               <CCol md={6}>
                 {/* Nombre */}
                 <div className="mb-3">
-                  <CInputGroup hasValidation>
+                  <CInputGroup>
                     <CInputGroupText><CIcon icon={cilUser} /></CInputGroupText>
                     <CFormInput
                       type="text"
@@ -142,7 +200,7 @@ const InternalUsers = () => {
               <CCol md={6}>
                 {/* Apellidos */}
                 <div className="mb-3">
-                  <CInputGroup hasValidation>
+                  <CInputGroup>
                     <CInputGroupText><CIcon icon={cilUser} /></CInputGroupText>
                     <CFormInput
                       type="text"
@@ -162,7 +220,7 @@ const InternalUsers = () => {
               <CCol md={6}>
                 {/* Fecha nacimiento */}
                 <div className="mb-3">
-                  <CInputGroup hasValidation>
+                  <CInputGroup>
                     <CInputGroupText><CIcon icon={cilBirthdayCake} /></CInputGroupText>
                     <CFormInput
                       type="date"
@@ -179,7 +237,7 @@ const InternalUsers = () => {
               <CCol md={6}>
                 {/* Tipo de documento */}
                 <div className="mb-3">
-                  <CInputGroup hasValidation>
+                  <CInputGroup>
                     <CInputGroupText><CIcon icon={cilBadge} /></CInputGroupText>
                     <CFormSelect
                       name="tipoDoc"
@@ -202,7 +260,7 @@ const InternalUsers = () => {
               <CCol md={6}>
                 {/* Fecha de vinculación */}
                 <div className="mb-3">
-                  <CInputGroup hasValidation>
+                  <CInputGroup>
                     <CInputGroupText><CIcon icon={cilCalendar} /></CInputGroupText>
                     <CFormInput
                       type="date"
@@ -219,7 +277,7 @@ const InternalUsers = () => {
               <CCol md={6}>
                 {/* Número de documento */}
                 <div className="mb-3">
-                  <CInputGroup hasValidation>
+                  <CInputGroup>
                     <CInputGroupText>#</CInputGroupText>
                     <CFormInput
                       type="text"
@@ -239,7 +297,7 @@ const InternalUsers = () => {
               <CCol md={6}>
                 {/* Correo */}
                 <div className="mb-3">
-                  <CInputGroup hasValidation>
+                  <CInputGroup>
                     <CInputGroupText><CIcon icon={cilEnvelopeClosed} /></CInputGroupText>
                     <CFormInput
                       type="email"
@@ -259,7 +317,7 @@ const InternalUsers = () => {
               <CCol md={6}>
                 {/* Contraseña */}
                 <div className="mb-3">
-                  <CInputGroup hasValidation>
+                  <CInputGroup>
                     <CInputGroupText><CIcon icon={cilLockLocked} /></CInputGroupText>
                     <CFormInput
                       type="password"
@@ -278,17 +336,131 @@ const InternalUsers = () => {
             </CRow>
 
             <div className="d-grid d-sm-flex gap-2">
-              <CButton color="primary" type="submit">Crear usuario</CButton>
-              <CButton color="secondary" variant="outline" type="button" onClick={handleReset}>
+              <CButton color="primary" type="submit" disabled={submitting}>
+                {submitting ? 'Creando…' : 'Crear usuario'}
+              </CButton>
+              <CButton color="secondary" variant="outline" type="button" onClick={handleReset} disabled={submitting}>
                 Limpiar
               </CButton>
             </div>
           </CForm>
         </CCardBody>
 
+        {/* ------------------ LISTADO / TABLA ------------------ */}
         <CCardHeader>Usuarios</CCardHeader>
         <CCardBody>
-          <p className="text-body-secondary m-0">Próximamente: tabla de usuarios internos…</p>
+          {/* Filtros */}
+          <CRow className="g-3 align-items-end mb-3">
+            <CCol md={5}>
+              <CInputGroup>
+                <CInputGroupText><CIcon icon={cilSearch} /></CInputGroupText>
+                <CFormInput
+                  placeholder="Buscar por nombre, apellidos, email o documento"
+                  value={qTyping}
+                  onChange={(e) => setQTyping(e.target.value)}
+                />
+              </CInputGroup>
+            </CCol>
+            <CCol md={3}>
+              <CFormSelect
+                value={filters.role}
+                onChange={(e) => { setFilters((p) => ({ ...p, role: e.target.value })); setPage(1) }}
+              >
+                <option value="">Todos los roles</option>
+                <option value="DIRECTOR">Director</option>
+                <option value="ADMIN">Administrador</option>
+                <option value="ENTRENADOR">Entrenador</option>
+              </CFormSelect>
+            </CCol>
+            <CCol md={2}>
+              <CFormInput
+                type="date"
+                value={filters.from}
+                onChange={(e) => { setFilters((p) => ({ ...p, from: e.target.value })); setPage(1) }}
+                placeholder="Desde"
+              />
+            </CCol>
+            <CCol md={2}>
+              <CFormInput
+                type="date"
+                value={filters.to}
+                onChange={(e) => { setFilters((p) => ({ ...p, to: e.target.value })); setPage(1) }}
+                placeholder="Hasta"
+              />
+            </CCol>
+            <CCol xs="12" className="d-flex gap-2">
+              <CButton color="secondary" variant="outline" onClick={resetFilters}>Limpiar filtros</CButton>
+            </CCol>
+          </CRow>
+
+          {/* Tabla */}
+          {loading ? (
+            <div className="d-flex align-items-center gap-2">
+              <CSpinner size="sm" /> Cargando usuarios…
+            </div>
+          ) : users.length === 0 ? (
+            <p className="text-body-secondary m-0">No se encontraron usuarios con los filtros aplicados.</p>
+          ) : (
+            <>
+              <CTable responsive hover align="middle">
+                <CTableHead>
+                  <CTableRow>
+                    <CTableHeaderCell>Documento</CTableHeaderCell>
+                    <CTableHeaderCell>Nombre</CTableHeaderCell>
+                    <CTableHeaderCell>Rol</CTableHeaderCell>
+                    <CTableHeaderCell>Nacimiento</CTableHeaderCell>
+                    <CTableHeaderCell>Vinculación</CTableHeaderCell>
+                    <CTableHeaderCell>Email</CTableHeaderCell>
+                  </CTableRow>
+                </CTableHead>
+                <CTableBody>
+                  {users.map((u) => (
+                    <CTableRow key={u.id || `${u.tipo_documento}-${u.documento}`}>
+                      <CTableDataCell>{u.tipo_documento} {u.documento}</CTableDataCell>
+                      <CTableDataCell>{u.nombres} {u.apellidos}</CTableDataCell>
+                      <CTableDataCell>{u.tipo_usuario}</CTableDataCell>
+                      <CTableDataCell>{u.fecha_nacimiento}</CTableDataCell>
+                      <CTableDataCell>{u.fecha_vinculacion}</CTableDataCell>
+                      <CTableDataCell>{u.email}</CTableDataCell>
+                    </CTableRow>
+                  ))}
+                </CTableBody>
+              </CTable>
+
+              {/* Paginación */}
+              <div className="d-flex justify-content-between align-items-center mt-3">
+                <div className="d-flex align-items-center gap-2">
+                  <span className="text-body-secondary">Filas por página:</span>
+                  <CFormSelect
+                    style={{ width: 90 }}
+                    value={pageSize}
+                    onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1) }}
+                  >
+                    <option value={5}>5</option>
+                    <option value={8}>8</option>
+                    <option value={10}>10</option>
+                    <option value={20}>20</option>
+                  </CFormSelect>
+                </div>
+
+                <CPagination align="end" className="m-0">
+                  <CPaginationItem disabled={page === 1} onClick={() => setPage(1)}>
+                    «
+                  </CPaginationItem>
+                  <CPaginationItem disabled={page === 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+                    ‹
+                  </CPaginationItem>
+                  <CPaginationItem active>{page}</CPaginationItem>
+                  <CPaginationItem disabled={page === totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>
+                    ›
+                  </CPaginationItem>
+                  <CPaginationItem disabled={page === totalPages} onClick={() => setPage(totalPages)}>
+                    »
+                  </CPaginationItem>
+                </CPagination>
+              </div>
+            </>
+          )}
         </CCardBody>
       </CCard>
     </>
