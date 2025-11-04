@@ -16,7 +16,7 @@ import { useAuthUser } from 'src/context/AuthUserContext'
 
 const AppHeaderDropdown = () => {
   const navigate = useNavigate()
-  const { user, setUser } = useAuthUser()    // 👈 también tomamos setUser del contexto
+  const { user, setUser } = useAuthUser()   
   const [imgOk, setImgOk] = useState(true)
 
   const initials = ((user?.name?.[0] || '') + (user?.lastname?.[0] || '')).toUpperCase() || 'PF'
