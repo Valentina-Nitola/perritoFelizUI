@@ -116,17 +116,38 @@ const InternalUsers = () => {
   const refreshList = async () => {
     try {
       setLoading(true)
+      // Adaptamos los filtros del frontend a los que espera Django
       const params = {
         page,
-        pageSize,
-        q: filters.q?.trim() || undefined,
-        role: filters.role || undefined,            // e.g. DIRECTOR | ADMIN | ENTRENADOR
-        from: filters.from || undefined,            // YYYY-MM-DD
-        to: filters.to || undefined,                // YYYY-MM-DD
+        page_size: pageSize,
+        search: filters.q?.trim() || undefined,               // búsqueda general
+        tipo_usuario: filters.role || undefined,              // ADMIN, DIRECTOR, ENTRENADOR
+        fecha_vinculacion_after: filters.from || undefined,   // desde
+        fecha_vinculacion_before: filters.to || undefined,    // hasta
       }
-      const resp = await listarUsuariosInternos(params)
-      setUsers(resp.items || [])
-      setTotal(resp.total || 0)
+
+      // Convertimos params en query string limpia
+      const query = Object.entries(params)
+        .filter(([_, v]) => v !== undefined && v !== '')
+        .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+        .join('&')
+
+      // Petición al backend
+      const res = await fetch(`${import.meta.env.VITE_API_BASE}/usuarios-internos/?${query}`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('access')}`,
+        },
+      })
+
+      if (!res.ok) throw new Error(`Error ${res.status} al listar usuarios internos`)
+      const data = await res.json()
+
+      // 🔹 Si tu backend devuelve results (paginado DRF)
+      const items = data.results || data.items || data
+      const totalCount = data.count || data.total || items.length
+
+      setUsers(items)
+      setTotal(totalCount)
     } catch (err) {
       console.error('Error listando usuarios internos:', err)
       setUsers([])
@@ -135,6 +156,7 @@ const InternalUsers = () => {
       setLoading(false)
     }
   }
+
 
   useEffect(() => {
     refreshList()
