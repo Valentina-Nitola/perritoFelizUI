@@ -1,8 +1,11 @@
+// ----------------------------------------------
+// src/views/dashboard/Dashboard_Client.js
+// ----------------------------------------------
 import React, { useEffect, useRef, useState } from 'react'
+import { dashboardService } from 'src/services/dashboardService'
+import { useAuthUser } from 'src/context/AuthUserContext'
 import {
   CAvatar,
-  CButton,
-  CButtonGroup,
   CCard,
   CCardBody,
   CCardFooter,
@@ -22,64 +25,15 @@ import { cilDog, cilCalendar, cilChart, cilChartPie, cilUser } from '@coreui/ico
 import 'chart.js/auto'
 import { Chart } from 'chart.js'
 
-/**
- * DASHBOARD CLIENTE – ESCUELA CANINA
- * Funcionando con Mocks por ahora
- */
-
-// Utils
+// ----------------------------------------------
+// Utilidades
+// ----------------------------------------------
 const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
 const fmt = (n) => new Intl.NumberFormat('es-CO').format(n)
 
-// Mocks de fecha
-const mockNow = new Date()
-const mockMonthIndex = mockNow.getMonth()
-const mockYear = mockNow.getFullYear()
-
-// ====== MOCKS DE DATOS (simulan respuesta de backend) ======
-const mockDogs = [
-  {
-    id: 1,
-    name: 'Luna',
-    plan: 'Mensual',
-    avatar: 'https://place-puppy.com/80x80',
-    expiresAt: new Date(mockYear, mockMonthIndex, 28), // vence este mes
-    absencesThisMonth: 1,
-    learning: { animo: 85, obediencia: 78, sociabilidad: 90, conciencia: 82, actividad: 75 }, // 0–100
-    health: { conciencia: 90, mucosas: 84, pelajePiel: 88, peso: 80, abdomen: 92 }, // 0–100
-  },
-  {
-    id: 2,
-    name: 'Rocky',
-    plan: 'Bimestral',
-    avatar: 'https://place-puppy.com/81x81',
-    expiresAt: new Date(mockYear, mockMonthIndex + 1, 12), // siguiente mes
-    absencesThisMonth: 2,
-    learning: { animo: 70, obediencia: 74, sociabilidad: 76, conciencia: 68, actividad: 82 },
-    health: { conciencia: 88, mucosas: 79, pelajePiel: 85, peso: 76, abdomen: 86 },
-  },
-  {
-    id: 3,
-    name: 'Kira',
-    plan: 'Semestral',
-    avatar: 'https://place-puppy.com/83x83',
-    expiresAt: new Date(mockYear, mockMonthIndex + 2, 5),
-    absencesThisMonth: 0,
-    learning: { animo: 92, obediencia: 88, sociabilidad: 91, conciencia: 87, actividad: 89 },
-    health: { conciencia: 93, mucosas: 90, pelajePiel: 95, peso: 88, abdomen: 91 },
-  },
-]
-
-// Helpers de cálculo
-const daysBetween = (a, b) => Math.ceil((b - a) / (1000 * 60 * 60 * 24))
-
-const calcNextExpiryDays = (dogs) => {
-  const today = new Date()
-  const future = dogs
-    .map((d) => ({ id: d.id, days: daysBetween(today, d.expiresAt) }))
-    .filter((d) => d.days >= 0)
-  if (!future.length) return 0
-  return Math.min(...future.map((f) => f.days))
+const daysBetween = (a, b) => {
+  if (!a || !b) return 0
+  return Math.ceil((new Date(b) - new Date(a)) / (1000 * 60 * 60 * 24))
 }
 
 const avg = (arr) => (arr.length ? arr.reduce((s, n) => s + n, 0) / arr.length : 0)
@@ -88,19 +42,22 @@ const learningKeys = ['animo', 'obediencia', 'sociabilidad', 'conciencia', 'acti
 const healthKeys = ['conciencia', 'mucosas', 'pelajePiel', 'peso', 'abdomen']
 
 const averageLearning = (dogs) => {
-  const values = dogs.map((d) => avg(Object.values(d.learning)))
+  const values = dogs.map((d) => avg(Object.values(d.learning || {})))
   return Math.round(avg(values))
 }
 
 const aggregateByKeys = (dogs, keys, selector) => {
   const res = {}
   keys.forEach((k) => {
-    res[k] = Math.round(avg(dogs.map((d) => selector(d)[k])))
+    const vals = dogs.map((d) => selector(d)?.[k] || 0)
+    res[k] = Math.round(avg(vals))
   })
   return res
 }
 
-// ====== COMPONENTES REUTILIZABLES ======
+// ----------------------------------------------
+// Componentes reusables
+// ----------------------------------------------
 const KpiCard = ({ title, value, subtitle, icon = cilDog }) => (
   <CCard className="h-100 shadow-sm">
     <CCardBody className="p-3">
@@ -111,9 +68,7 @@ const KpiCard = ({ title, value, subtitle, icon = cilDog }) => (
             <CIcon icon={icon} size="lg" />
           </div>
         </div>
-        <div className="display-6 fw-bold lh-1">
-          {typeof value === 'number' ? fmt(value) : value}
-        </div>
+        <div className="display-6 fw-bold lh-1">{typeof value === 'number' ? fmt(value) : value}</div>
         {subtitle && <div className="small text-body-secondary mt-2">{subtitle}</div>}
       </div>
     </CCardBody>
@@ -132,13 +87,13 @@ const RadarChart = ({ title, labels, data, icon = cilChart }) => {
       type: 'radar',
       data: {
         labels,
-        datasets: [{ label: title, data: data }],
+        datasets: [{ label: title, data }],
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: { legend: { display: false }, tooltip: { enabled: true } },
-        scales: { r: { beginAtZero: true, suggestedMax: 100, ticks: { stepSize: 20 } } },
+        plugins: { legend: { display: false } },
+        scales: { r: { beginAtZero: true, suggestedMax: 100 } },
       },
     })
 
@@ -149,7 +104,7 @@ const RadarChart = ({ title, labels, data, icon = cilChart }) => {
     <CCard className="h-100 shadow-sm">
       <CCardHeader className="d-flex align-items-center gap-2">
         <CIcon icon={icon} />
-        <span>{title} – {monthNames[mockMonthIndex]} {mockYear}</span>
+        <span>{title}</span>
       </CCardHeader>
       <CCardBody style={{ height: 340 }}>
         <canvas ref={canvasRef} />
@@ -170,9 +125,7 @@ const BarAbsences = ({ dogs }) => {
       type: 'bar',
       data: {
         labels: dogs.map((d) => d.name),
-        datasets: [
-          { label: 'Faltas en el mes', data: dogs.map((d) => d.absencesThisMonth) },
-        ],
+        datasets: [{ label: 'Faltas en el mes', data: dogs.map((d) => d.absencesThisMonth) }],
       },
       options: {
         responsive: true,
@@ -189,13 +142,14 @@ const BarAbsences = ({ dogs }) => {
     <CCard className="h-100 shadow-sm">
       <CCardHeader className="d-flex align-items-center gap-2">
         <CIcon icon={cilCalendar} />
-        <span>Faltas por canino – {monthNames[mockMonthIndex]} {mockYear}</span>
+        <span>Faltas por canino</span>
       </CCardHeader>
       <CCardBody style={{ height: 320 }}>
         <canvas ref={canvasRef} />
       </CCardBody>
       <CCardFooter className="text-center small text-body-secondary">
-        Total de faltas del mes: <strong>{fmt(dogs.reduce((s, d) => s + d.absencesThisMonth, 0))}</strong>
+        Total de faltas del mes:{' '}
+        <strong>{fmt(dogs.reduce((s, d) => s + (d.absencesThisMonth || 0), 0))}</strong>
       </CCardFooter>
     </CCard>
   )
@@ -208,20 +162,22 @@ const DogsTable = ({ items }) => (
       <CTable align="middle" hover responsive className="mb-0 border">
         <CTableHead className="text-nowrap">
           <CTableRow>
-            <CTableHeaderCell className="bg-body-tertiary text-center"><CIcon icon={cilDog} /></CTableHeaderCell>
+            <CTableHeaderCell className="bg-body-tertiary text-center">
+              <CIcon icon={cilDog} />
+            </CTableHeaderCell>
             <CTableHeaderCell className="bg-body-tertiary">Nombre</CTableHeaderCell>
             <CTableHeaderCell className="bg-body-tertiary">Plan</CTableHeaderCell>
-            <CTableHeaderCell className="bg-body-tertiary text-end">Dias restantes</CTableHeaderCell>
+            <CTableHeaderCell className="bg-body-tertiary text-end">Días restantes</CTableHeaderCell>
             <CTableHeaderCell className="bg-body-tertiary text-end">Faltas mes</CTableHeaderCell>
-            <CTableHeaderCell className="bg-body-tertiary text-end">Aprendizaje (prom.)</CTableHeaderCell>
-            <CTableHeaderCell className="bg-body-tertiary text-end">Salud (prom.)</CTableHeaderCell>
+            <CTableHeaderCell className="bg-body-tertiary text-end">Aprendizaje</CTableHeaderCell>
+            <CTableHeaderCell className="bg-body-tertiary text-end">Salud</CTableHeaderCell>
           </CTableRow>
         </CTableHead>
         <CTableBody>
           {items.map((it, i) => {
-            const daysLeft = Math.max(0, daysBetween(new Date(), it.expiresAt))
-            const learnAvg = Math.round(avg(Object.values(it.learning)))
-            const healthAvg = Math.round(avg(Object.values(it.health)))
+            const daysLeft = it.expiresAt ? Math.max(0, daysBetween(new Date(), it.expiresAt)) : '-'
+            const learnAvg = Math.round(avg(Object.values(it.learning || {})))
+            const healthAvg = Math.round(avg(Object.values(it.health || {})))
             return (
               <CTableRow key={i}>
                 <CTableDataCell className="text-center">
@@ -230,9 +186,13 @@ const DogsTable = ({ items }) => (
                 <CTableDataCell className="fw-semibold">{it.name}</CTableDataCell>
                 <CTableDataCell>{it.plan}</CTableDataCell>
                 <CTableDataCell className="text-end">
-                  <CBadge color={daysLeft <= 7 ? 'danger' : daysLeft <= 15 ? 'warning' : 'success'}>
-                    {daysLeft}
-                  </CBadge>
+                  {daysLeft !== '-' ? (
+                    <CBadge color={daysLeft <= 7 ? 'danger' : daysLeft <= 15 ? 'warning' : 'success'}>
+                      {daysLeft}
+                    </CBadge>
+                  ) : (
+                    '-'
+                  )}
                 </CTableDataCell>
                 <CTableDataCell className="text-end">{it.absencesThisMonth}</CTableDataCell>
                 <CTableDataCell className="text-end">{learnAvg}</CTableDataCell>
@@ -246,96 +206,55 @@ const DogsTable = ({ items }) => (
   </CCard>
 )
 
-// ====== COMPONENTE PRINCIPAL ======
+// ----------------------------------------------
+// Componente principal
+// ----------------------------------------------
 const Dashboard_Client = () => {
   const [loading, setLoading] = useState(false)
+  const [dogs, setDogs] = useState([])
+  const { user } = useAuthUser()
 
-  // Estado con mocks (luego se reemplaza con fetch)
-  const [dogs, setDogs] = useState(mockDogs)
+  useEffect(() => {
+    const fetchDashboard = async () => {
+      try {
+        setLoading(true)
+        const token = localStorage.getItem('access')
+        const data = await dashboardService.getClientDashboard(token)
+        setDogs(data)
+      } catch (err) {
+        console.error('Error al cargar dashboard:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchDashboard()
+  }, [])
 
-  // KPIs calculados
   const kpiDogs = dogs.length
-  const kpiNextExpiryDays = calcNextExpiryDays(dogs)
-  const kpiAbsences = dogs.reduce((s, d) => s + d.absencesThisMonth, 0)
+  const kpiNextExpiryDays = Math.min(
+    ...dogs.map((d) => (d.expiresAt ? daysBetween(new Date(), d.expiresAt) : Infinity)),
+  )
+  const kpiAbsences = dogs.reduce((s, d) => s + (d.absencesThisMonth || 0), 0)
   const kpiLearningAvg = averageLearning(dogs)
 
-  // Series agregadas para radars
   const learningAgg = aggregateByKeys(dogs, learningKeys, (d) => d.learning)
   const healthAgg = aggregateByKeys(dogs, healthKeys, (d) => d.health)
-
-  /**
-   * TODO (BACK): Endpoints sugeridos
-   * 1) GET /me/dogs
-   *    -> [{ id, name, plan, avatarUrl, expiresAt, absencesThisMonth }]
-   * 2) GET /me/dogs/metrics/learning?month=YYYY-MM
-   *    -> [{ dogId, animo, obediencia, sociabilidad, conciencia, actividad }]
-   * 3) GET /me/dogs/metrics/health?month=YYYY-MM
-   *    -> [{ dogId, conciencia, mucosas, pelajePiel, peso, abdomen }]
-   * 4) (Opcional) GET /me/dashboard/summary?month=YYYY-MM
-   *    -> { dogsCount, nextExpiryDays, totalAbsences, learningAvg }
-   */
-
-  // Ejemplo de carga real (descomenta cuando esté el back)
-  // useEffect(() => {
-  //   const controller = new AbortController()
-  //   async function loadAll() {
-  //     try {
-  //       setLoading(true)
-  //       const now = new Date()
-  //       const y = now.getFullYear()
-  //       const m = String(now.getMonth() + 1).padStart(2, '0')
-  //
-  //       const dogsRes = await fetch(`/me/dogs`, { signal: controller.signal, credentials: 'include' })
-  //       const dogsJson = await dogsRes.json()
-  //
-  //       const learnRes = await fetch(`/me/dogs/metrics/learning?month=${y}-${m}`, { signal: controller.signal, credentials: 'include' })
-  //       const learnJson = await learnRes.json()
-  //
-  //       const healthRes = await fetch(`/me/dogs/metrics/health?month=${y}-${m}`, { signal: controller.signal, credentials: 'include' })
-  //       const healthJson = await healthRes.json()
-  //
-  //       // Combinar métricas con perros
-  //       const merged = dogsJson.map((d) => ({
-  //         ...d,
-  //         learning: learnJson.find((l) => l.dogId === d.id),
-  //         health: healthJson.find((h) => h.dogId === d.id),
-  //       }))
-  //       setDogs(merged)
-  //     } catch (e) {
-  //       console.error(e)
-  //     } finally {
-  //       setLoading(false)
-  //     }
-  //   }
-  //   loadAll()
-  //   return () => controller.abort()
-  // }, [])
 
   return (
     <>
       {/* FILA 1: KPIs */}
       <CRow className="mb-4" xs={{ gutter: 4 }}>
         <CCol xs={12} md={3}>
-          <KpiCard
-            title="Tus caninos"
-            value={kpiDogs}
-            subtitle="Caninos activos en tu cuenta"
-            icon={cilDog}
-          />
+          <KpiCard title="Tus caninos" value={kpiDogs} subtitle="Caninos activos" icon={cilDog} />
+        </CCol>
+        <CCol xs={12} md={3}>
+          <KpiCard title="Próximo vencimiento" value={`${kpiNextExpiryDays} días`} icon={cilCalendar} />
         </CCol>
         <CCol xs={12} md={3}>
           <KpiCard
-            title="Próximo vencimiento"
-            value={`${kpiNextExpiryDays} días`}
-            subtitle="Matrícula más próxima a vencer"
-            icon={cilCalendar}
-          />
-        </CCol>
-        <CCol xs={12} md={3}>
-          <KpiCard
-            title={`Faltas (${monthNames[mockMonthIndex]} ${mockYear})`}
+            title="Faltas del mes"
             value={kpiAbsences}
-            subtitle="Total de faltas de tus caninos"
+            subtitle="Total de faltas registradas"
             icon={cilUser}
           />
         </CCol>
@@ -343,49 +262,37 @@ const Dashboard_Client = () => {
           <KpiCard
             title="Aprendizaje (prom.)"
             value={`${kpiLearningAvg}`}
-            subtitle="Promedio 0–100 del mes"
+            subtitle="Promedio mensual"
             icon={cilChart}
           />
         </CCol>
       </CRow>
 
-      {/* FILA 2: Gráficos principales */}
+      {/* FILA 2: Gráficos */}
       <CRow className="mb-4" xs={{ gutter: 4 }}>
         <CCol xs={12} md={6}>
-          <RadarChart
-            title="Aprendizaje"
-            labels={['Ánimo', 'Obediencia', 'Sociabilidad', 'Conciencia', 'Actividad']}
-            data={learningKeys.map((k) => learningAgg[k])}
-            icon={cilChart}
-          />
+          <RadarChart title="Aprendizaje" labels={learningKeys} data={learningKeys.map((k) => learningAgg[k])} />
         </CCol>
         <CCol xs={12} md={6}>
-          <RadarChart
-            title="Salud"
-            labels={['Conciencia', 'Mucosas', 'Pelaje/Piel', 'Peso', 'Abdomen']}
-            data={healthKeys.map((k) => healthAgg[k])}
-            icon={cilChartPie}
-          />
+          <RadarChart title="Salud" labels={healthKeys} data={healthKeys.map((k) => healthAgg[k])} icon={cilChartPie} />
         </CCol>
       </CRow>
 
-      {/* FILA 3: Faltas por canino */}
+      {/* FILA 3: Faltas */}
       <CRow className="mb-4">
         <CCol xs={12}>
           <BarAbsences dogs={dogs} />
         </CCol>
       </CRow>
 
-      {/* FILA 4: Tabla resumen */}
+      {/* FILA 4: Tabla */}
       <CRow>
         <CCol xs={12}>
           <DogsTable items={dogs} />
         </CCol>
       </CRow>
 
-      {loading && (
-        <div className="text-center my-3 small text-body-secondary">Cargando tus datos…</div>
-      )}
+      {loading && <div className="text-center my-3 small text-body-secondary">Cargando tus datos…</div>}
     </>
   )
 }
