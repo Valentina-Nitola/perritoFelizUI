@@ -1,4 +1,7 @@
-import React, { useMemo, useRef, useState } from 'react'
+// ----------------------------------------------
+// src/views/profile/Profile.js
+// ----------------------------------------------
+import React, { useMemo, useRef, useState, useEffect } from 'react'
 import {
   CBadge,
   CButton,
@@ -17,23 +20,29 @@ import {
 import CIcon from '@coreui/icons-react'
 import { cilCalendar, cilEnvelopeClosed, cilHome, cilPhone, cilUser, cilBadge } from '@coreui/icons'
 import { useAuthUser } from 'src/context/AuthUserContext'
+import { profileService } from 'src/services/profileService'
 
+// ----------------------------------------------
+// Usuario por defecto (mock local)
+// ----------------------------------------------
 const MOCK_USER = {
-  name: 'Junior',
-  lastname: 'Pérez Ortiz',
-  nacimiento: '1997-03-15',
-  correo: 'junior12ortiz@gmail.com',
-  celular: '3001234567',
-  direccion: 'Calle 123 #45-67',
-  documento: '1009234576',
+  name: 'Usuario',
+  lastname: '',
+  nacimiento: '',
+  correo: '',
+  celular: '',
+  direccion: '',
+  documento: '',
   role: 'cliente',
-  petsCount: 2,
-  createdAt: '2023-10-12',
-  about: 'Vivo en blabla y tengo dos mascotas muy gentiles que les encanta comer.',
-  avatarUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=400&auto=format&fit=crop',
+  petsCount: 0,
+  createdAt: '',
+  about: 'Aquí puedes escribir algo sobre ti...',
+  avatarUrl: 'https://cdn-icons-png.flaticon.com/512/847/847969.png',
 }
 
-// helpers -------------------------------------------------
+// ----------------------------------------------
+// Helpers
+// ----------------------------------------------
 const fmtDate = (isoStr) => {
   if (!isoStr) return ''
   const d = new Date(isoStr)
@@ -43,6 +52,7 @@ const fmtDate = (isoStr) => {
   const day = String(d.getDate()).padStart(2, '0')
   return `${y}-${m}-${day}`
 }
+
 const getAge = (isoStr) => {
   if (!isoStr) return ''
   const b = new Date(isoStr)
@@ -53,8 +63,9 @@ const getAge = (isoStr) => {
   if (m < 0 || (m === 0 && t.getDate() < b.getDate())) age--
   return age
 }
+
 const roleColor = (role) => {
-  switch (role) {
+  switch (role?.toLowerCase()) {
     case 'director': return 'danger'
     case 'administrador': return 'warning'
     case 'entrenador': return 'info'
@@ -62,7 +73,10 @@ const roleColor = (role) => {
     default: return 'secondary'
   }
 }
+
+// ----------------------------------------------
 // Validaciones
+// ----------------------------------------------
 const nameRe = /^[A-Za-zÀ-ÿ\u00f1\u00d1 ]{2,60}$/
 const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 const digitsRe = /^[0-9]{7,15}$/
@@ -74,37 +88,63 @@ const isFuture = (yyyyMmDd) => {
   return d.getTime() > today.getTime()
 }
 
+// ----------------------------------------------
+// Componente principal
+// ----------------------------------------------
 const Profile = () => {
   const { user: ctxUser, updateUser } = useAuthUser()
 
-  // toma del contexto o usa mock
-  const baseUser = ctxUser ? { ...MOCK_USER, ...ctxUser } : MOCK_USER
-
-  // state -------------------------------------------------
-  const [form, setForm] = useState({
-    name: baseUser.name || '',
-    lastname: baseUser.lastname || '',
-    nacimiento: fmtDate(baseUser.nacimiento),
-    correo: baseUser.correo || baseUser.email || '',
-    celular: baseUser.celular || '',
-    direccion: baseUser.direccion || baseUser.address || '',
-    documento: baseUser.documento || baseUser.doc || '',
-    about: baseUser.about || '',
-  })
+  const [form, setForm] = useState(MOCK_USER)
+  const [baseUser, setBaseUser] = useState(MOCK_USER)
   const [errors, setErrors] = useState({})
-  const [avatarUrl, setAvatarUrl] = useState(baseUser.avatarUrl || '')
+  const [avatarUrl, setAvatarUrl] = useState(MOCK_USER.avatarUrl)
   const [avatarFile, setAvatarFile] = useState(null)
   const [editMode, setEditMode] = useState(false)
   const [validated, setValidated] = useState(false)
   const fileRef = useRef(null)
 
-  const initials = useMemo(() => {
-    const a = (form.name?.[0] || '') + (form.lastname?.[0] || '')
-    return a.toUpperCase() || 'PF'
-  }, [form.name, form.lastname])
-  const age = useMemo(() => getAge(form.nacimiento), [form.nacimiento])
+  // ----------------------------------------------
+  // Cargar perfil desde el backend
+  // ----------------------------------------------
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const token = localStorage.getItem('access')
+        console.log("🔹 Token del localStorage:", token) // 👈 agrega esto
+        if (!token) return
+        const data = await profileService.getProfile(token)
 
-  // handlers ----------------------------------------------
+        // 🔹 Mapeo de los campos reales del backend → frontend
+        const usuario = {
+          name: data.nombres || '',
+          lastname: data.apellidos || '',
+          nacimiento: fmtDate(data.fecha_nacimiento),
+          correo: data.email || '',
+          celular: data.telefono || '',
+          direccion: data.direccion || '',
+          documento: data.documento || '',
+          role: data.tipo_usuario?.toLowerCase() || 'cliente',
+          petsCount: 0,
+          createdAt: fmtDate(data.fecha_registro),
+          about: 'Aquí puedes escribir algo sobre ti...',
+          avatarUrl: data.foto || MOCK_USER.avatarUrl,
+        }
+
+        setForm(usuario)
+        setBaseUser(usuario)
+        setAvatarUrl(usuario.avatarUrl)
+        updateUser(usuario)
+      } catch (err) {
+        console.error('Error al obtener perfil:', err)
+      }
+    }
+
+    fetchProfile()
+  }, [])
+
+  // ----------------------------------------------
+  // Validaciones
+  // ----------------------------------------------
   const validateField = (name, value) => {
     switch (name) {
       case 'name':
@@ -130,9 +170,6 @@ const Profile = () => {
         if (!value) return 'La fecha de nacimiento es obligatoria.'
         if (isFuture(value)) return 'La fecha no puede ser futura.'
         return ''
-      case 'documento':
-        if (!value.trim()) return 'El documento es obligatorio.'
-        return ''
       default:
         return ''
     }
@@ -141,8 +178,8 @@ const Profile = () => {
   const validateAll = () => {
     const nextErrors = {}
     Object.entries(form).forEach(([k, v]) => {
-      if (k === 'about') return // opcional
-      const msg = validateField(k, v)
+      if (k === 'about') return
+      const msg = validateField(k, v || '')
       if (msg) nextErrors[k] = msg
     })
     setErrors(nextErrors)
@@ -150,11 +187,14 @@ const Profile = () => {
     return Object.keys(nextErrors).length === 0
   }
 
+  // ----------------------------------------------
+  // Handlers
+  // ----------------------------------------------
   const handleChange = (e) => {
     const { name, value } = e.target
-    setForm((p) => ({ ...p, [name]: value }))
+    setForm((prev) => ({ ...prev, [name]: value ?? '' }))
     if (validated || errors[name]) {
-      const msg = validateField(name, value)
+      const msg = validateField(name, value ?? '')
       setErrors((prev) => ({ ...prev, [name]: msg }))
     }
   }
@@ -164,33 +204,17 @@ const Profile = () => {
   const handleAvatarChange = (e) => {
     const file = e.target.files?.[0]
     if (!file) return
-    if (!file.type.startsWith('image/')) {
-      alert('Selecciona una imagen válida.')
-      return
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      alert('La imagen no debe superar 5MB.')
-      return
-    }
-    const url = URL.createObjectURL(file) // previsualización
+    if (!file.type.startsWith('image/')) return alert('Selecciona una imagen válida.')
+    if (file.size > 5 * 1024 * 1024) return alert('La imagen no debe superar 5MB.')
+    const url = URL.createObjectURL(file)
     setAvatarUrl(url)
     setAvatarFile(file)
   }
 
   const handleEditToggle = () => {
     if (editMode) {
-      // restaurar
-      setForm({
-        name: baseUser.name || '',
-        lastname: baseUser.lastname || '',
-        nacimiento: fmtDate(baseUser.nacimiento),
-        correo: baseUser.correo || baseUser.email || '',
-        celular: baseUser.celular || '',
-        direccion: baseUser.direccion || baseUser.address || '',
-        documento: baseUser.documento || baseUser.doc || '',
-        about: baseUser.about || '',
-      })
-      setAvatarUrl(baseUser.avatarUrl || '')
+      setForm(baseUser)
+      setAvatarUrl(baseUser.avatarUrl)
       setAvatarFile(null)
       setErrors({})
       setValidated(false)
@@ -199,30 +223,31 @@ const Profile = () => {
   }
 
   const handleSave = async () => {
-    if (!validateAll()) {
-      if (!editMode) setEditMode(true)
-      return
+    if (!validateAll()) return
+    try {
+      const token = localStorage.getItem('access')
+      const data = {
+        nombres: form.name,
+        apellidos: form.lastname,
+        fecha_nacimiento: form.nacimiento,
+        telefono: form.celular,
+        email: form.correo,
+        direccion: form.direccion,
+      }
+      await profileService.updateProfile(data, token)
+      alert('✅ Perfil actualizado correctamente.')
+      setEditMode(false)
+    } catch (err) {
+      console.error('Error al actualizar perfil:', err)
+      alert('⚠️ Error al actualizar el perfil.')
     }
-
-    // TODO: conecta con backend (multipart FormData + PUT) y obtén avatarUrl final
-    // const updatedFromAPI = await profileService.updateProfile(form, avatarFile)
-
-    // Por ahora: sincroniza en contexto y localStorage
-    const updated = {
-      ...(ctxUser || {}),
-      ...form,
-      avatarUrl: avatarUrl || baseUser.avatarUrl || '',
-      role: baseUser.role,
-      petsCount: baseUser.petsCount,
-      createdAt: baseUser.createdAt,
-    }
-
-    updateUser(updated) // <— sincroniza toda la app
-    setEditMode(false)
-    alert('Cambios guardados (mock local).')
   }
 
-  // UI ----------------------------------------------------
+  const age = useMemo(() => getAge(form.nacimiento), [form.nacimiento])
+
+  // ----------------------------------------------
+  // Render
+  // ----------------------------------------------
   return (
     <CRow className="g-4">
       {/* Columna izquierda */}
@@ -244,46 +269,48 @@ const Profile = () => {
           <CCardBody>
             <CForm noValidate>
               <CRow className="g-4">
+                {/* Nombres */}
                 <CCol md={6}>
                   <CInputGroup hasValidation>
                     <CInputGroupText><CIcon icon={cilUser} /></CInputGroupText>
                     <CFormInput
                       name="name"
-                      placeholder="Nombres"
-                      value={form.name}
+                      value={form.name || ''}
                       onChange={handleChange}
                       readOnly={!editMode}
                       invalid={!!errors.name}
                       required
+                      placeholder="Nombres"
                     />
                     <CFormFeedback invalid>{errors.name}</CFormFeedback>
                   </CInputGroup>
                 </CCol>
 
+                {/* Apellidos */}
                 <CCol md={6}>
                   <CInputGroup hasValidation>
                     <CInputGroupText><CIcon icon={cilUser} /></CInputGroupText>
                     <CFormInput
                       name="lastname"
-                      placeholder="Apellidos"
-                      value={form.lastname}
+                      value={form.lastname || ''}
                       onChange={handleChange}
                       readOnly={!editMode}
                       invalid={!!errors.lastname}
                       required
+                      placeholder="Apellidos"
                     />
                     <CFormFeedback invalid>{errors.lastname}</CFormFeedback>
                   </CInputGroup>
                 </CCol>
 
+                {/* Fecha de nacimiento */}
                 <CCol md={6}>
                   <CInputGroup hasValidation>
                     <CInputGroupText><CIcon icon={cilCalendar} /></CInputGroupText>
                     <CFormInput
                       type="date"
                       name="nacimiento"
-                      placeholder="Fecha de nacimiento"
-                      value={form.nacimiento}
+                      value={form.nacimiento || ''}
                       onChange={handleChange}
                       readOnly={!editMode}
                       invalid={!!errors.nacimiento}
@@ -293,95 +320,78 @@ const Profile = () => {
                   </CInputGroup>
                 </CCol>
 
+                {/* Correo */}
                 <CCol md={6}>
                   <CInputGroup hasValidation>
                     <CInputGroupText><CIcon icon={cilEnvelopeClosed} /></CInputGroupText>
                     <CFormInput
-                      type="email"
                       name="correo"
-                      placeholder="Correo"
-                      value={form.correo}
+                      value={form.correo || ''}
                       onChange={handleChange}
                       readOnly={!editMode}
                       invalid={!!errors.correo}
                       required
+                      placeholder="Correo"
                     />
                     <CFormFeedback invalid>{errors.correo}</CFormFeedback>
                   </CInputGroup>
                 </CCol>
 
+                {/* Celular */}
                 <CCol md={6}>
                   <CInputGroup hasValidation>
                     <CInputGroupText><CIcon icon={cilPhone} /></CInputGroupText>
                     <CFormInput
-                      type="text"
                       name="celular"
-                      placeholder="Celular"
-                      value={form.celular}
-                      onChange={(e) => {
-                        // Solo permite números
-                        const numericValue = e.target.value.replace(/\D/g, '')
-                        handleChange({ target: { name: e.target.name, value: numericValue } })
-                      }}
-                      onKeyDown={(e) => {
-                        // Bloquea letras, símbolos y espacios
-                        if (
-                          !/[0-9]/.test(e.key) &&
-                          e.key !== 'Backspace' &&
-                          e.key !== 'Delete' &&
-                          e.key !== 'ArrowLeft' &&
-                          e.key !== 'ArrowRight' &&
-                          e.key !== 'Tab'
-                        ) {
-                          e.preventDefault()
-                        }
-                      }}
+                      value={form.celular || ''}
+                      onChange={handleChange}
                       readOnly={!editMode}
                       invalid={!!errors.celular}
                       required
+                      placeholder="Celular"
                     />
                     <CFormFeedback invalid>{errors.celular}</CFormFeedback>
                   </CInputGroup>
                 </CCol>
 
+                {/* Dirección */}
                 <CCol md={6}>
                   <CInputGroup hasValidation>
                     <CInputGroupText><CIcon icon={cilHome} /></CInputGroupText>
                     <CFormInput
                       name="direccion"
-                      placeholder="Dirección"
-                      value={form.direccion}
+                      value={form.direccion || ''}
                       onChange={handleChange}
                       readOnly={!editMode}
                       invalid={!!errors.direccion}
                       required
+                      placeholder="Dirección"
                     />
                     <CFormFeedback invalid>{errors.direccion}</CFormFeedback>
                   </CInputGroup>
                 </CCol>
 
+                {/* Documento */}
                 <CCol md={6}>
-                  <CInputGroup hasValidation>
+                  <CInputGroup>
                     <CInputGroupText><CIcon icon={cilBadge} /></CInputGroupText>
                     <CFormInput
                       name="documento"
-                      placeholder="Número de documento"
-                      value={form.documento}
-                      readOnly // no editable
-                      invalid={!!errors.documento}
-                      required
+                      value={form.documento || ''}
+                      readOnly
+                      placeholder="Documento"
                     />
-                    <CFormFeedback invalid>{errors.documento}</CFormFeedback>
                   </CInputGroup>
                 </CCol>
 
+                {/* Sobre mí */}
                 <CCol xs={12}>
                   <label className="form-label">Sobre mí (opcional)</label>
                   <CFormTextarea
                     rows={4}
                     name="about"
                     placeholder="Escribe algo sobre ti…"
-                    value={form.about}
+                    value={form.about || ''}
                     onChange={handleChange}
                     readOnly={!editMode}
                   />
@@ -401,27 +411,18 @@ const Profile = () => {
                 <img
                   src={avatarUrl}
                   alt="Avatar"
-                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                 />
               </div>
             </div>
 
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/*"
-              className="d-none"
-              onChange={handleAvatarChange}
-            />
-            <CButton color="link" className="p-0 mb-3" onClick={handlePickAvatar}>
-              Editar
-            </CButton>
+            <input ref={fileRef} type="file" accept="image/*" className="d-none" onChange={handleAvatarChange} />
+            <CButton color="link" className="p-0 mb-3" onClick={handlePickAvatar}>Editar</CButton>
 
             <h6 className="mb-0 text-center">
               {form.name} {form.lastname}{age ? `, ${age}` : ''} años
             </h6>
 
-            {/* Bloque horizontal: Mascotas | Miembro desde */}
             <div className="d-flex justify-content-center align-items-center gap-4 my-3">
               <div className="text-center">
                 <div className="fs-6 fw-bold">{baseUser.petsCount ?? 0}</div>
@@ -429,24 +430,16 @@ const Profile = () => {
               </div>
               <div className="vr" />
               <div className="text-center">
-                <div className="fs-6 fw-bold">{fmtDate(baseUser.createdAt)}</div>
+                <div className="fs-6 fw-bold">{baseUser.createdAt}</div>
                 <div className="text-body-secondary">Miembro desde</div>
               </div>
             </div>
 
-            <div className="d-flex align-items-center gap-2 mb-2">
-              <CBadge color={roleColor(baseUser.role)}>{baseUser.role || 'rol'}</CBadge>
-            </div>
+            <CBadge color={roleColor(baseUser.role)}>{baseUser.role}</CBadge>
 
-            <div className="w-100">
+            <div className="w-100 mt-3">
               <label className="form-label">Sobre mí</label>
-              <CFormTextarea
-                rows={4}
-                value={form.about}
-                onChange={handleChange}
-                name="about"
-                readOnly={!editMode}
-              />
+              <CFormTextarea rows={4} value={form.about || ''} readOnly />
             </div>
           </CCardBody>
         </CCard>
