@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import {
   CAvatar,
   CBadge,
@@ -9,83 +9,91 @@ import {
   CDropdownMenu,
   CDropdownToggle,
 } from '@coreui/react'
-import {
-  cilBell,
-  cilCreditCard,
-  cilCommentSquare,
-  cilEnvelopeOpen,
-  cilFile,
-  cilLockLocked,
-  cilSettings,
-  cilTask,
-  cilUser,
-} from '@coreui/icons'
 import CIcon from '@coreui/icons-react'
-
-import avatar8 from './../../assets/images/avatars/8.jpg'
+import { cilCreditCard, cilLockLocked, cilSettings, cilUser, cilDog } from '@coreui/icons'
+import { useNavigate } from 'react-router-dom'
+import { useAuthUser } from 'src/context/AuthUserContext'
 
 const AppHeaderDropdown = () => {
+  const navigate = useNavigate()
+  const { user, setUser } = useAuthUser()   
+  const [imgOk, setImgOk] = useState(true)
+
+  const initials = ((user?.name?.[0] || '') + (user?.lastname?.[0] || '')).toUpperCase() || 'PF'
+  const avatarSrc = user?.avatarUrl || ''
+
+  const handleLogout = () => {
+    localStorage.clear()
+    sessionStorage.clear()
+    setUser(null)
+    navigate('/login', { replace: true })
+  }
+
+
   return (
     <CDropdown variant="nav-item">
       <CDropdownToggle placement="bottom-end" className="py-0 pe-0" caret={false}>
-        <CAvatar src={avatar8} size="md" />
+        {avatarSrc ? (
+          <CAvatar
+            src={avatarSrc}
+            shape="rounded-circle"
+            style={{
+              width: 40,
+              height: 40,
+              overflow: 'hidden',
+              border: '2px solid var(--cui-border-color)',
+            }}
+          >
+      
+            <img
+              src={avatarSrc}
+              alt="avatar"
+              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+            />
+          </CAvatar>
+        ) : (
+          <CAvatar
+            color="primary"
+            shape="rounded-circle"
+            style={{ width: 40, height: 40 }}
+          >
+            {initials}
+          </CAvatar>
+        )}
       </CDropdownToggle>
+        
+
       <CDropdownMenu className="pt-0" placement="bottom-end">
-        <CDropdownItem href="#">
-          <CIcon icon={cilBell} className="me-2" />
-          Updates
-          <CBadge color="info" className="ms-2">
-            42
-          </CBadge>
-        </CDropdownItem>
-        <CDropdownItem href="#">
-          <CIcon icon={cilEnvelopeOpen} className="me-2" />
-          Messages
-          <CBadge color="success" className="ms-2">
-            42
-          </CBadge>
-        </CDropdownItem>
-        <CDropdownItem href="#">
-          <CIcon icon={cilTask} className="me-2" />
-          Tasks
-          <CBadge color="danger" className="ms-2">
-            42
-          </CBadge>
-        </CDropdownItem>
-        <CDropdownItem href="#">
-          <CIcon icon={cilCommentSquare} className="me-2" />
-          Comments
-          <CBadge color="warning" className="ms-2">
-            42
-          </CBadge>
-        </CDropdownItem>
-        <CDropdownHeader className="bg-body-secondary fw-semibold my-2">Settings</CDropdownHeader>
-        <CDropdownItem href="#">
+        <CDropdownHeader className="bg-body-secondary fw-semibold my-2">
+          Configuración
+        </CDropdownHeader>
+
+        <CDropdownItem onClick={() => navigate('/profile')}>
           <CIcon icon={cilUser} className="me-2" />
-          Profile
+          Perfil
         </CDropdownItem>
-        <CDropdownItem href="#">
+
+        <CDropdownItem onClick={() => navigate('/pets')}>
+          <CIcon icon={cilDog} className="me-2" />
+          Mascotas
+          <CBadge color="primary" className="ms-2">42</CBadge>
+        </CDropdownItem>
+
+        <CDropdownItem onClick={() => navigate('/settings')}>
           <CIcon icon={cilSettings} className="me-2" />
-          Settings
+          Ajustes
         </CDropdownItem>
-        <CDropdownItem href="#">
+
+        <CDropdownItem onClick={() => navigate('/payments')}>
           <CIcon icon={cilCreditCard} className="me-2" />
-          Payments
-          <CBadge color="secondary" className="ms-2">
-            42
-          </CBadge>
+          Pagos
+          <CBadge color="secondary" className="ms-2">42</CBadge>
         </CDropdownItem>
-        <CDropdownItem href="#">
-          <CIcon icon={cilFile} className="me-2" />
-          Projects
-          <CBadge color="primary" className="ms-2">
-            42
-          </CBadge>
-        </CDropdownItem>
+
         <CDropdownDivider />
-        <CDropdownItem href="#">
+        <CDropdownItem onClick={handleLogout}>
           <CIcon icon={cilLockLocked} className="me-2" />
-          Lock Account
+          Cerrar Sesión
         </CDropdownItem>
       </CDropdownMenu>
     </CDropdown>

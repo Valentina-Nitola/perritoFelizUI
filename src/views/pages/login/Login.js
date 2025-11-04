@@ -1,5 +1,6 @@
-import React from 'react'
-import { Link } from 'react-router-dom'
+import React, { useState, useRef } from 'react'
+export const API_BASE = import.meta.env.VITE_API_BASE
+import { Link, useNavigate } from 'react-router-dom'
 import {
   CButton,
   CCard,
@@ -12,65 +13,169 @@ import {
   CInputGroup,
   CInputGroupText,
   CRow,
+  CCarousel,
+  CCarouselItem,
+  CImage,
 } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
 import { cilLockLocked, cilUser } from '@coreui/icons'
+import ReCAPTCHA from 'react-google-recaptcha'
+import { authService } from '../../../services/authService'
+import { logo } from 'src/assets/brand/logo'
+import 'src/scss/patterns.scss'
+import { normalizeRole } from '../../../permissions/permissions'
+import { useAuthUser } from '../../../context/AuthUserContext'
+
+// Carrusel
+const images = import.meta.glob('/src/assets/images/Carrusel/*.{png,PNG,jpg,jpeg,webp}', {
+  eager: true,
+  as: 'url',
+})
+const slides = Object.values(images).map((url) => ({ src: url }))
 
 const Login = () => {
+  const [documento, setDocumento] = useState('')
+  const [password, setPassword] = useState('')
+  const [recaptchaToken, setRecaptchaToken] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const recaptchaRef = useRef(null)
+  const navigate = useNavigate()
+  const { setUser } = useAuthUser()
+
+  const siteKey = import.meta.env.VITE_RECAPTCHA_SITEKEY
+  const handleCaptchaChange = (value) => setRecaptchaToken(value)
+
+  const mapRole = (rawUser) => {
+    const roleRaw =
+      rawUser?.role ||
+      (rawUser?.rol && (rawUser.rol.nombre || rawUser.rol)) ||
+      rawUser?.tipo_usuario ||
+      rawUser?.perfil ||
+      rawUser?.tipo ||
+      ''
+    const rl = String(roleRaw).toLowerCase()
+    const alias = {
+      admin: 'administrador',
+      administrador: 'administrador',
+      director: 'administrador',
+      entrenador: 'entrenador',
+      cliente: 'cliente',
+    }
+    return alias[rl] || normalizeRole(rl)
+  }
+
+  const handleLogin = async (e) => {
+    e.preventDefault()
+    if (!documento || !password) {
+      alert('Por favor, completa documento y contraseña')
+      return
+    }
+    if (!recaptchaToken) {
+      alert('Por favor, confirma que no eres un robot')
+      return
+    }
+
+    try {
+      setLoading(true)
+
+      // Verifica reCAPTCHA (opcional)
+      await authService.verifyRecaptcha(recaptchaToken)
+
+      // Login con JWT → guarda tokens + user (y si no viene, llama a /me)
+      const { user } = await authService.jwtLogin(documento, password)
+
+      // Normaliza rol y guarda en contexto + localStorage
+      const role = mapRole(user)
+      const normalizedUser = { ...user, role }
+      authService.setUser(normalizedUser) // actualiza localStorage
+      setUser(normalizedUser) // actualiza contexto
+
+      // Redirección por rol
+      let path = '/dashboard'
+      if (role === 'administrador' || role === 'entrenador') path = '/dashboard'
+      else if (role === 'cliente') path = '/dashboard_Client'
+      navigate(path, { replace: true })
+
+    } catch (err) {
+      console.error('Error en login JWT:', err)
+      
+      alert(err.message || 'Error al iniciar sesión')
+      if (recaptchaRef.current) recaptchaRef.current.reset()
+      setRecaptchaToken(null)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const canSubmit = !!documento && !!password && !!recaptchaToken && !loading
+
   return (
-    <div className="bg-body-tertiary min-vh-100 d-flex flex-row align-items-center">
+    <div className="page-bg-pattern d-flex flex-row align-items-center">
       <CContainer>
         <CRow className="justify-content-center">
           <CCol md={8}>
             <CCardGroup>
-              <CCard className="p-4">
+              <CCard className="p-4 shadow-lg" style={{ borderRadius: '20px 0 0 20px' }}>
                 <CCardBody>
-                  <CForm>
-                    <h1>Login</h1>
-                    <p className="text-body-secondary">Sign In to your account</p>
+                  <CForm onSubmit={handleLogin}>
+                    <div className="text-center mb-4">
+                      <h1 className="mb-2">Bienvenido a</h1>
+                      <CIcon icon={logo} height={140} className="my-2 text-primary" />
+                      <h2 className="mt-2">Iniciar sesión</h2>
+                      <p className="text-body-secondary">Recuerda que debes iniciar sesión con el documento de identidad con el cual te registraste</p>
+                    </div>
+
                     <CInputGroup className="mb-3">
-                      <CInputGroupText>
-                        <CIcon icon={cilUser} />
-                      </CInputGroupText>
-                      <CFormInput placeholder="Username" autoComplete="username" />
+                      <CInputGroupText><CIcon icon={cilUser} /></CInputGroupText>
+                      <CFormInput placeholder="Documento de identidad" value={documento} onChange={(e) => setDocumento(e.target.value)} autoComplete="off" />
                     </CInputGroup>
+
                     <CInputGroup className="mb-4">
-                      <CInputGroupText>
-                        <CIcon icon={cilLockLocked} />
-                      </CInputGroupText>
-                      <CFormInput
-                        type="password"
-                        placeholder="Password"
-                        autoComplete="current-password"
-                      />
+                      <CInputGroupText><CIcon icon={cilLockLocked} /></CInputGroupText>
+                      <CFormInput type="password" placeholder="Contraseña" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="off" />
                     </CInputGroup>
-                    <CRow>
-                      <CCol xs={6}>
-                        <CButton color="primary" className="px-4">
-                          Login
+
+                    <div className="mb-3 d-flex justify-content-center">
+                      {siteKey ? (
+                        <ReCAPTCHA ref={recaptchaRef} sitekey={siteKey} onChange={handleCaptchaChange} />
+                      ) : (
+                        <small className="text-danger">Falta configurar <code>VITE_RECAPTCHA_SITEKEY</code> en el .env del frontend</small>
+                      )}
+                    </div>
+
+                    <CRow className="align-items-center">
+                      <CCol xs="auto">
+                        <CButton color="success" className="px-4 btn-white-text" type="submit" disabled={!canSubmit}>
+                          {loading ? 'Ingresando...' : 'Iniciar Sesión'}
                         </CButton>
                       </CCol>
-                      <CCol xs={6} className="text-right">
-                        <CButton color="link" className="px-0">
-                          Forgot password?
-                        </CButton>
+                      <CCol className="text-end">
+                        <Link to="/password">
+                          <CButton color="link" className="px-0 text-nowrap">¿Olvidaste tu contraseña?</CButton>
+                        </Link>
                       </CCol>
                     </CRow>
                   </CForm>
                 </CCardBody>
               </CCard>
-              <CCard className="text-white bg-primary py-5" style={{ width: '44%' }}>
+
+              <CCard className="text-white bg-primary py-5" style={{ width: '44%', borderRadius: '0 20px 20px 0' }}>
                 <CCardBody className="text-center">
+                  <div className="mb-4" style={{ borderRadius: 12, overflow: 'hidden' }}>
+                    <CCarousel ride="carousel" interval={3000} pause={false} wrap controls={false} indicators dark>
+                      {slides.map((s, i) => (
+                        <CCarouselItem key={i}>
+                          <CImage className="d-block w-100" src={s.src} alt={`slide-${i}`} style={{ objectFit: 'cover', height: 240 }} />
+                        </CCarouselItem>
+                      ))}
+                    </CCarousel>
+                  </div>
+
                   <div>
-                    <h2>Sign up</h2>
-                    <p>
-                      Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod
-                      tempor incididunt ut labore et dolore magna aliqua.
-                    </p>
+                    <h2>Crea tu cuenta</h2>
+                    <p>Convierte el amor por tu mascota en su mejor versión. ¡Regístrate y empieza su camino hacia la obediencia y la grandeza!</p>
                     <Link to="/register">
-                      <CButton color="primary" className="mt-3" active tabIndex={-1}>
-                        Register Now!
-                      </CButton>
+                      <CButton color="primary" className="mt-3" active tabIndex={-1}>¡Regístrate ahora!</CButton>
                     </Link>
                   </div>
                 </CCardBody>

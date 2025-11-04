@@ -1,0 +1,11 @@
+.page-bg-pattern {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+
+  background-color: #F5E8D5;
+  background-image: url('src/assets/svg/huellitas.svg') !important;
+  background-repeat: repeat;
+  background-size: 110px 110px; 
+  background-position: center;
+}
