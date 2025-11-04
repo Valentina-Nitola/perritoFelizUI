@@ -124,7 +124,7 @@ const Profile = () => {
           direccion: data.direccion || '',
           documento: data.documento || '',
           role: data.tipo_usuario?.toLowerCase() || 'cliente',
-          petsCount: 0,
+          petsCount: data.petsCount,
           createdAt: fmtDate(data.fecha_registro),
           about: 'Aquí puedes escribir algo sobre ti...',
           avatarUrl: data.foto || MOCK_USER.avatarUrl,
@@ -134,6 +134,7 @@ const Profile = () => {
         setBaseUser(usuario)
         setAvatarUrl(usuario.avatarUrl)
         updateUser(usuario)
+        console.log("Usuario:",usuario)
       } catch (err) {
         console.error('Error al obtener perfil:', err)
       }
