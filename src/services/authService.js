@@ -1,5 +1,5 @@
 // ----------------------------------------------
-// src/services/authService.js (versión JWT completa)
+// src/services/authService.js (versión JWT completa con validaciones remotas)
 // ----------------------------------------------
 import { API_BASE } from './apiClient'
 
@@ -165,6 +165,19 @@ export async function register(userData) {
   return handleJson(resp, 'Error al registrar usuario')
 }
 
+// 🔹 Validaciones remotas: email y documento
+export async function checkEmail(email) {
+  const resp = await fetch(`${API_BASE}/check-email/?email=${encodeURIComponent(email)}`)
+  if (!resp.ok) throw new Error('Error verificando correo.')
+  return resp.json()
+}
+
+export async function checkDocumento(documento) {
+  const resp = await fetch(`${API_BASE}/check-documento/?documento=${encodeURIComponent(documento)}`)
+  if (!resp.ok) throw new Error('Error verificando documento.')
+  return resp.json()
+}
+
 // ------------------------
 // Export agrupado
 // ------------------------
@@ -179,5 +192,7 @@ export const authService = {
   getRefreshToken,
   getUser,
   setUser,
-  register, // ✅ agregado correctamente
+  register,
+  checkEmail,       // ✅ agregado
+  checkDocumento,   // ✅ agregado
 }
