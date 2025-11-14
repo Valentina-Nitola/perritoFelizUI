@@ -110,7 +110,7 @@ const Profile = () => {
     const fetchProfile = async () => {
       try {
         const token = localStorage.getItem('access')
-        console.log("🔹 Token del localStorage:", token) // 👈 agrega esto
+        console.log("Token del localStorage:", token) 
         if (!token) return
         const data = await profileService.getProfile(token)
 
@@ -345,7 +345,16 @@ const Profile = () => {
                     <CFormInput
                       name="celular"
                       value={form.celular || ''}
-                      onChange={handleChange}
+                      onChange={(e) => {
+                        const numeric = (e.target.value || '').replace(/\D/g, '')
+                        handleChange({ target: { name: 'celular', value: numeric } })
+                      }}
+                      onKeyDown={(e) => {
+                        if (!/[0-9]/.test(e.key) &&
+                            !['Backspace','Delete','ArrowLeft','ArrowRight','Tab'].includes(e.key)) {
+                          e.preventDefault()
+                        }
+                      }}
                       readOnly={!editMode}
                       invalid={!!errors.celular}
                       required
