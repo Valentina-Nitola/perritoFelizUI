@@ -133,7 +133,11 @@ const Profile = () => {
         setForm(usuario)
         setBaseUser(usuario)
         setAvatarUrl(usuario.avatarUrl)
-        updateUser(usuario)
+        updateUser({
+          ...ctxUser,
+          ...usuario,
+          role: ctxUser?.role,
+        })
         console.log("Usuario:",usuario)
       } catch (err) {
         console.error('Error al obtener perfil:', err)
