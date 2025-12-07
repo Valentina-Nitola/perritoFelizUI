@@ -30,7 +30,7 @@ const MatricularCanino = () => {
     transporte: '',
     nombre: '',
     raza: '',
-    nacimiento: '',
+    fecha_nacimiento: '',
     talla: '',
   })
   const [vacunasPdf, setVacunasPdf] = useState(null) // File
@@ -577,7 +577,7 @@ const MatricularCanino = () => {
                     <CTableDataCell>{m.plan}</CTableDataCell>
                     <CTableDataCell>{m.transporte}</CTableDataCell>
                     <CTableDataCell>{m.talla}</CTableDataCell>
-                    <CTableDataCell>{m.nacimiento}</CTableDataCell>
+                    <CTableDataCell>{m.fecha_nacimiento}</CTableDataCell>
                     <CTableDataCell>
                       {m.vacunas_url ? (
                         <a href={m.vacunas_url} target="_blank" rel="noopener noreferrer">
