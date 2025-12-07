@@ -75,7 +75,7 @@ const _nav = [
   {
     component: CNavItem,
     name: 'Caninos Matriculados',
-    to: '/matricula',
+    to: '/rematricula',
     anyOf: ['rematricula:ver'],
     icon: <CIcon icon={cilDog} customClassName="nav-icon" />,
   },

@@ -29,7 +29,7 @@ const routes = [
   { path: '/profile', name: 'Profile', element: Profile },
   { path: '/user_int', name: 'Usuario Interno', element: User_Int, meta: { anyOf: ['user_int:ver'] } },
   { path: '/matricula', name: 'Matrícula', element: Matricula, meta: { anyOf: ['matricula:ver'] } },
-  { path: '/matricula', name: 'Matrícula', element: reMatricula, meta: { anyOf: ['rematricula:ver'] } },
+  { path: '/rematricula', name: 'Matrícula', element: reMatricula, meta: { anyOf: ['rematricula:ver'] } },
   { path: '/asistencia', name: 'Asistencia', element: Asistencia, meta: { anyOf: ['asistencia:ver'] } },
 ]
 
