@@ -21,6 +21,8 @@ import CIcon from '@coreui/icons-react'
 import { cilCalendar, cilEnvelopeClosed, cilHome, cilPhone, cilUser, cilBadge } from '@coreui/icons'
 import { useAuthUser } from 'src/context/AuthUserContext'
 import { profileService } from 'src/services/profileService'
+import { supabase } from '../../supabaseClient'
+
 
 // ----------------------------------------------
 // Usuario por defecto (mock local)
@@ -227,10 +229,52 @@ const Profile = () => {
     setEditMode((v) => !v)
   }
 
-  const handleSave = async () => {
-    if (!validateAll()) return
+  const uploadAvatarToSupabase = async (file, userId) => {
     try {
-      const token = localStorage.getItem('access')
+      if (!file) return null;
+
+      // extensión del archivo
+      const fileExt = file.name.split('.').pop();
+
+      // 🔥 ruta FINAL correcta (sin carpetas raras)
+      const filePath = `${userId}.${fileExt}`;
+
+      console.log("Subiendo a:", filePath);
+
+      // 1️⃣ Subir foto
+      const { error: uploadError } = await supabase.storage
+        .from('profile-photos')  // ESTE es tu bucket
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadError) {
+        console.error(uploadError);
+        alert("Error subiendo imagen");
+        return null;
+      }
+
+      // 2️⃣ Obtener URL pública real
+      const { data } = supabase.storage
+        .from('profile-photos')
+        .getPublicUrl(filePath);
+
+      console.log("URL pública:", data.publicUrl);
+
+      return data.publicUrl;
+    } catch (error) {
+      console.error("Error subiendo avatar:", error);
+      return null;
+    }
+  };
+
+
+
+  const handleSave = async () => {
+    if (!validateAll()) return;
+
+    try {
+      const token = localStorage.getItem('access');
+
+      // 🔹 1. Enviar datos normales primero
       const data = {
         nombres: form.name,
         apellidos: form.lastname,
@@ -238,15 +282,34 @@ const Profile = () => {
         telefono: form.celular,
         email: form.correo,
         direccion: form.direccion,
+      };
+
+      await profileService.updateProfile(data, token);
+
+      // 🔹 2. Si el usuario seleccionó un nuevo avatar → subirlo a Supabase
+      if (avatarFile) {
+        const userId = ctxUser?.id || ctxUser?.pk || data.documento; // Ajusta al ID real de tu backend
+
+        const publicUrl = await uploadAvatarToSupabase(avatarFile, userId);
+
+        if (publicUrl) {
+          // 🔹 Enviar URL al backend
+          await profileService.updateProfile({ foto: publicUrl }, token);
+
+          // 🔹 Actualizar UI
+          setAvatarUrl(publicUrl);
+          updateUser({ ...ctxUser, avatarUrl: publicUrl });
+        }
       }
-      await profileService.updateProfile(data, token)
-      alert('✅ Perfil actualizado correctamente.')
-      setEditMode(false)
+
+      alert('✅ Perfil actualizado correctamente.');
+      setEditMode(false);
     } catch (err) {
-      console.error('Error al actualizar perfil:', err)
-      alert('⚠️ Error al actualizar el perfil.')
+      console.error('Error al actualizar perfil:', err);
+      alert('⚠️ Error al actualizar el perfil.');
     }
-  }
+  };
+
 
   const age = useMemo(() => getAge(form.nacimiento), [form.nacimiento])
 
