@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import {
   CRow,
   CCol,
@@ -12,6 +12,14 @@ import {
   CFormSelect,
   CFormFeedback,
   CButton,
+  CTable,
+  CTableHead,
+  CTableRow,
+  CTableHeaderCell,
+  CTableBody,
+  CTableDataCell,
+  CSpinner,
+  CAlert,
 } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
 import { cilUser, cilBadge, cilBirthdayCake, cilBusAlt } from '@coreui/icons'
@@ -28,7 +36,16 @@ const MatricularCanino = () => {
   const [vacunasPdf, setVacunasPdf] = useState(null) // File
   const [validated, setValidated] = useState(false)
   const [submitting, setSubmitting] = useState(false)
-  const [nacimientoError, setNacimientoError] = useState('') 
+  const [nacimientoError, setNacimientoError] = useState('')
+
+  // 👉 Estado para listar caninos
+  const [mascotas, setMascotas] = useState([])
+  const [loadingMascotas, setLoadingMascotas] = useState(false)
+  const [errorMascotas, setErrorMascotas] = useState('')
+
+  // 👉 Estado para edición / eliminación
+  const [editingId, setEditingId] = useState(null) // id de la matrícula que se está editando
+  const [deletingId, setDeletingId] = useState(null) // id que se está eliminando
 
   // Utilidad: formatear fecha a YYYY-MM-DD
   const fmt = (d) => {
@@ -38,7 +55,6 @@ const MatricularCanino = () => {
     return `${yyyy}-${mm}-${dd}`
   }
 
-  
   const maxNacimiento = useMemo(() => {
     const cutoff = new Date()
     cutoff.setMonth(cutoff.getMonth() - 4)
@@ -63,11 +79,72 @@ const MatricularCanino = () => {
   // Valida que la fecha sea <= maxNacimiento (al menos 4 meses)
   const validateNacimiento = (value, maxAllowed) => {
     if (!value) return 'Campo obligatorio.'
-    // Si es posterior al máximo (hoy - 4 meses), es inválida
     if (value > maxAllowed) return 'El canino debe tener mínimo 4 meses.'
     return ''
   }
 
+  // -------- LISTADO --------
+  const fetchMascotas = async () => {
+    try {
+      setLoadingMascotas(true)
+      setErrorMascotas('')
+
+      const accessToken =
+        localStorage.getItem('access') ||
+        localStorage.getItem('accessToken') ||
+        localStorage.getItem('token')
+
+      if (!accessToken) {
+        setErrorMascotas('No hay sesión iniciada. Vuelve a iniciar sesión.')
+        return
+      }
+
+      const url = `${import.meta.env.VITE_API_BASE}/matriculas/`
+      console.log('GET mascotas ->', url)
+
+      const res = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      })
+
+      console.log('Status listado mascotas:', res.status)
+
+      if (!res.ok) {
+        const text = await res.text()
+        console.error('Error body listado mascotas:', text)
+        throw new Error(text || 'Error al listar matrículas')
+      }
+
+      const data = await res.json()
+      console.log('Data cruda listado mascotas:', data)
+
+      let lista = []
+      if (Array.isArray(data)) {
+        lista = data
+      } else if (Array.isArray(data.results)) {
+        lista = data.results
+      } else if (Array.isArray(data.data)) {
+        lista = data.data
+      } else {
+        console.warn('Formato inesperado en respuesta de mascotas:', data)
+        lista = []
+      }
+
+      setMascotas(lista)
+    } catch (err) {
+      console.error('Error en fetchMascotas:', err)
+      setErrorMascotas('Ocurrió un error al cargar tus mascotas.')
+    } finally {
+      setLoadingMascotas(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchMascotas()
+  }, [])
+
+  // -------- CREAR / EDITAR --------
   const handleSubmit = async (e) => {
     e.preventDefault()
     setValidated(true)
@@ -80,42 +157,55 @@ const MatricularCanino = () => {
     setNacimientoError(nErr)
     if (nErr) return
 
-    if (!vacunasPdf) {
-      alert('Adjunta el carné de vacunación en PDF.')
-      return
-    }
-
-    const isPdf = vacunasPdf.type === 'application/pdf'
-    const under5mb = vacunasPdf.size <= 5 * 1024 * 1024
-    if (!isPdf || !under5mb) {
-      alert('El archivo debe ser PDF y pesar menos de 5MB.')
-      return
-    }
+    const isEditing = Boolean(editingId)
 
     try {
       setSubmitting(true)
 
-      // 1️⃣ Subir PDF a Supabase
-      const { supabase } = await import('../../supabaseClient')
-      const fileName = `carnet_${Date.now()}_${vacunasPdf.name}`
+      const accessToken =
+        localStorage.getItem('access') ||
+        localStorage.getItem('accessToken') ||
+        localStorage.getItem('token')
 
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('carnet_vacunacion')
-        .upload(fileName, vacunasPdf, { contentType: 'application/pdf' })
+      if (!accessToken) {
+        alert('No hay sesión iniciada.')
+        return
+      }
 
-      if (uploadError) throw uploadError
+      // 1️⃣ Subir PDF SOLO si el usuario seleccionó uno nuevo
+      let vacunasUrl = ''
 
-      // 2️⃣ Obtener URL pública o firmada (según tu configuración)
-      const { data: urlData, error: urlError } = await supabase.storage
-        .from('carnet_vacunacion')
-        .getPublicUrl(fileName)
+      if (vacunasPdf) {
+        const { supabase } = await import('../../supabaseClient')
+        const fileName = `carnet_${Date.now()}_${vacunasPdf.name}`
 
-      if (urlError) throw urlError
+        const { error: uploadError } = await supabase.storage
+          .from('carnet_vacunacion')
+          .upload(fileName, vacunasPdf, { contentType: 'application/pdf' })
 
-      const vacunasUrl = urlData.publicUrl
-      console.log('✅ PDF subido correctamente:', vacunasUrl)
+        if (uploadError) throw uploadError
 
-      // 3️⃣ Preparar los datos para enviar al backend
+        const { data: urlData, error: urlError } = await supabase.storage
+          .from('carnet_vacunacion')
+          .getPublicUrl(fileName)
+
+        if (urlError) throw urlError
+
+        vacunasUrl = urlData.publicUrl
+        console.log('PDF subido correctamente:', vacunasUrl)
+      } else if (isEditing) {
+        // Si estamos editando y NO se subió un nuevo PDF,
+        // conservamos el que ya tenía la matrícula
+        const actual = mascotas.find((m) => m.id === editingId)
+        vacunasUrl = actual?.vacunas_url || ''
+      }
+
+      // Si estamos creando y no hay vacunasUrl, obligamos PDF
+      if (!isEditing && !vacunasUrl) {
+        alert('Adjunta el carné de vacunación en PDF.')
+        return
+      }
+
       const fd = new FormData()
       fd.append('nombre', form.nombre)
       fd.append('raza', form.raza)
@@ -123,37 +213,46 @@ const MatricularCanino = () => {
       fd.append('nacimiento', form.nacimiento)
       fd.append('plan', form.plan)
       fd.append('transporte', form.transporte)
-      fd.append('vacunas_url', vacunasUrl)
+      if (vacunasUrl) {
+        fd.append('vacunas_url', vacunasUrl)
+      }
 
-      // 4️⃣ Enviar los datos al backend Django
-      // ✅ Usa siempre el token más nuevo
-      const accessToken =
-        localStorage.getItem('access') ||
-        localStorage.getItem('accessToken') ||
-        localStorage.getItem('token')
+      const baseUrl = `${import.meta.env.VITE_API_BASE}/matriculas/`
 
-      console.log("🔐 Enviando token:", accessToken ? accessToken.slice(0, 30) + "..." : "❌ ninguno")
+      const url = isEditing ? `${baseUrl}${editingId}/` : baseUrl
+      const method = isEditing ? 'PUT' : 'POST'
 
-      const res = await fetch(`${import.meta.env.VITE_API_BASE}/matriculas/`, {
-        method: 'POST',
+      console.log(`${method} matrícula ->`, url)
+
+      const res = await fetch(url, {
+        method,
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },
-        body: fd, // ✅ usamos FormData
+        body: fd,
       })
 
-      if (!res.ok) throw new Error('No se pudo crear la matrícula.')
+      if (!res.ok) {
+        const text = await res.text()
+        console.error('Error body en submit matrícula:', text)
+        throw new Error(text || 'No se pudo guardar la matrícula.')
+      }
 
       handleReset()
-      alert('✅ Matrícula creada correctamente.')
+      if (isEditing) {
+        alert('Matrícula actualizada correctamente.')
+      } else {
+        alert('Matrícula creada correctamente.')
+      }
+
+      fetchMascotas()
     } catch (err) {
       console.error(err)
-      alert('❌ Ocurrió un problema al crear la matrícula.')
+      alert('Ocurrió un problema al guardar la matrícula.')
     } finally {
       setSubmitting(false)
     }
   }
-
 
   const handleReset = () => {
     setForm({
@@ -167,21 +266,88 @@ const MatricularCanino = () => {
     setVacunasPdf(null)
     setNacimientoError('')
     setValidated(false)
+    setEditingId(null)
   }
 
-  // Mensaje de error para el PDF
+  // -------- ELIMINAR --------
+  const handleDelete = async (id) => {
+    const confirmar = window.confirm('¿Seguro que deseas eliminar esta matrícula?')
+    if (!confirmar) return
+
+    try {
+      setDeletingId(id)
+
+      const accessToken =
+        localStorage.getItem('access') ||
+        localStorage.getItem('accessToken') ||
+        localStorage.getItem('token')
+
+      if (!accessToken) {
+        alert('No hay sesión iniciada.')
+        return
+      }
+
+      const url = `${import.meta.env.VITE_API_BASE}/matriculas/${id}/`
+      console.log('DELETE matrícula ->', url)
+
+      const res = await fetch(url, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      })
+
+      if (!res.ok) {
+        const text = await res.text()
+        console.error('Error body DELETE matrícula:', text)
+        throw new Error(text || 'No se pudo eliminar la matrícula.')
+      }
+
+      // Quitamos la matrícula de la tabla en memoria
+      setMascotas((prev) => prev.filter((m) => m.id !== id))
+      alert('Matrícula eliminada correctamente.')
+    } catch (err) {
+      console.error(err)
+      alert('Ocurrió un problema al eliminar la matrícula.')
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
+  // -------- INICIAR EDICIÓN DESDE LA TABLA --------
+  const startEdit = (m) => {
+    setEditingId(m.id)
+    setForm({
+      plan: m.plan || '',
+      transporte: m.transporte || '',
+      nombre: m.nombre || '',
+      raza: m.raza || '',
+      nacimiento: m.nacimiento || '',
+      talla: m.talla || '',
+    })
+    setVacunasPdf(null)
+    setNacimientoError('')
+    setValidated(false)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  // Mensaje de error para el PDF (solo para alta; en edición puede ser opcional)
   const pdfError = (() => {
     if (!validated) return ''
-    if (!vacunasPdf) return 'Adjunta el carné de vacunación en PDF.'
-    if (vacunasPdf.type !== 'application/pdf') return 'El archivo debe ser un PDF.'
-    if (vacunasPdf.size > 5 * 1024 * 1024) return 'El archivo no debe superar 5MB.'
+    if (!vacunasPdf && !editingId) return 'Adjunta el PDF del carné de vacunación.'
+    if (vacunasPdf && vacunasPdf.type !== 'application/pdf') return 'El archivo debe ser un PDF.'
+    if (vacunasPdf && vacunasPdf.size > 5 * 1024 * 1024) return 'El archivo no debe superar 5MB.'
     return ''
   })()
+
+  const isEditing = Boolean(editingId)
 
   return (
     <>
       <CCard className="mb-4">
-        <CCardHeader>Matricular Mascota</CCardHeader>
+        <CCardHeader>
+          {isEditing ? 'Editar Matrícula' : 'Matricular Mascota'}
+        </CCardHeader>
         <CCardBody>
           <CForm noValidate validated={validated} onSubmit={handleSubmit}>
             <CRow>
@@ -285,7 +451,7 @@ const MatricularCanino = () => {
                       name="nacimiento"
                       value={form.nacimiento}
                       onChange={handleChange}
-                      max={maxNacimiento} // <-- clave: al menos 4 meses
+                      max={maxNacimiento}
                       required
                     />
                     <CFormFeedback invalid>
@@ -326,7 +492,6 @@ const MatricularCanino = () => {
                       name="vacunas_pdf"
                       accept="application/pdf"
                       onChange={handleFileChange}
-                      required
                       aria-label="Subir PDF con el carné de vacunación"
                     />
                     <CFormFeedback invalid>
@@ -338,13 +503,22 @@ const MatricularCanino = () => {
                       Archivo: {vacunasPdf.name} ({(vacunasPdf.size / 1024 / 1024).toFixed(2)} MB)
                     </small>
                   )}
+                  {isEditing && !vacunasPdf && (
+                    <small className="text-body-secondary d-block mt-1">
+                      Si no seleccionas un nuevo archivo, se conservará el carné actual.
+                    </small>
+                  )}
                 </div>
               </CCol>
             </CRow>
 
             <div className="d-grid d-sm-flex gap-2">
               <CButton color="primary" type="submit" disabled={submitting}>
-                {submitting ? 'Enviando…' : 'Confirmar la matrícula'}
+                {submitting
+                  ? 'Guardando…'
+                  : isEditing
+                  ? 'Guardar cambios'
+                  : 'Confirmar la matrícula'}
               </CButton>
               <CButton
                 color="secondary"
@@ -353,15 +527,92 @@ const MatricularCanino = () => {
                 onClick={handleReset}
                 disabled={submitting}
               >
-                Limpiar
+                {isEditing ? 'Cancelar edición' : 'Limpiar'}
               </CButton>
             </div>
           </CForm>
         </CCardBody>
 
+        {/* 👇 Sección de listado de mascotas */}
         <CCardHeader>Mis Mascotas</CCardHeader>
         <CCardBody>
-          <p className="text-body-secondary m-0">Próximamente: tabla de caninos matriculados…</p>
+          {loadingMascotas && (
+            <div className="d-flex align-items-center gap-2">
+              <CSpinner size="sm" />
+              <span>Cargando mascotas…</span>
+            </div>
+          )}
+
+          {errorMascotas && (
+            <CAlert color="danger" className="mb-3">
+              {errorMascotas}
+            </CAlert>
+          )}
+
+          {!loadingMascotas && !errorMascotas && mascotas.length === 0 && (
+            <p className="text-body-secondary m-0">Aún no tienes mascotas matriculadas.</p>
+          )}
+
+          {!loadingMascotas && !errorMascotas && mascotas.length > 0 && (
+            <CTable hover responsive>
+              <CTableHead>
+                <CTableRow>
+                  <CTableHeaderCell>#</CTableHeaderCell>
+                  <CTableHeaderCell>Nombre</CTableHeaderCell>
+                  <CTableHeaderCell>Raza</CTableHeaderCell>
+                  <CTableHeaderCell>Plan</CTableHeaderCell>
+                  <CTableHeaderCell>Transporte</CTableHeaderCell>
+                  <CTableHeaderCell>Talla</CTableHeaderCell>
+                  <CTableHeaderCell>Nacimiento</CTableHeaderCell>
+                  <CTableHeaderCell>Carné</CTableHeaderCell>
+                  <CTableHeaderCell className="text-end">Acciones</CTableHeaderCell>
+                </CTableRow>
+              </CTableHead>
+              <CTableBody>
+                {mascotas.map((m, idx) => (
+                  <CTableRow key={m.id ?? idx}>
+                    <CTableDataCell>{idx + 1}</CTableDataCell>
+                    <CTableDataCell>{m.nombre}</CTableDataCell>
+                    <CTableDataCell>{m.raza}</CTableDataCell>
+                    <CTableDataCell>{m.plan}</CTableDataCell>
+                    <CTableDataCell>{m.transporte}</CTableDataCell>
+                    <CTableDataCell>{m.talla}</CTableDataCell>
+                    <CTableDataCell>{m.nacimiento}</CTableDataCell>
+                    <CTableDataCell>
+                      {m.vacunas_url ? (
+                        <a href={m.vacunas_url} target="_blank" rel="noopener noreferrer">
+                          Ver carné
+                        </a>
+                      ) : (
+                        <span className="text-body-secondary">No disponible</span>
+                      )}
+                    </CTableDataCell>
+                    <CTableDataCell className="text-end">
+                      <CButton
+                        color="secondary"
+                        size="sm"
+                        variant="outline"
+                        className="me-2"
+                        onClick={() => startEdit(m)}
+                        disabled={deletingId === m.id || submitting}
+                      >
+                        Editar
+                      </CButton>
+                      <CButton
+                        color="danger"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleDelete(m.id)}
+                        disabled={deletingId === m.id || submitting}
+                      >
+                        {deletingId === m.id ? 'Eliminando…' : 'Eliminar'}
+                      </CButton>
+                    </CTableDataCell>
+                  </CTableRow>
+                ))}
+              </CTableBody>
+            </CTable>
+          )}
         </CCardBody>
       </CCard>
     </>

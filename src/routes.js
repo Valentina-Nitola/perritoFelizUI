@@ -12,7 +12,12 @@ const Profile = React.lazy(() => import('./views/profile/Profile'))
 // Matricula
 const Matricula = React.lazy(() => import('./views/matricula/Matricula'))
 
+// Reporte de matricula
+const reMatricula = React.lazy(() => import('./views/reporte/Matricula'))
+
 const Login = React.lazy(() => import('./views/pages/login/Login'))
+
+const Asistencia = React.lazy(() => import('./views/asistencia/Asistencia'))
 
 
 const routes = [
@@ -24,6 +29,8 @@ const routes = [
   { path: '/profile', name: 'Profile', element: Profile },
   { path: '/user_int', name: 'Usuario Interno', element: User_Int, meta: { anyOf: ['user_int:ver'] } },
   { path: '/matricula', name: 'Matrícula', element: Matricula, meta: { anyOf: ['matricula:ver'] } },
+  { path: '/matricula', name: 'Matrícula', element: reMatricula, meta: { anyOf: ['rematricula:ver'] } },
+  { path: '/asistencia', name: 'Asistencia', element: Asistencia, meta: { anyOf: ['asistencia:ver'] } },
 ]
 
 export default routes
