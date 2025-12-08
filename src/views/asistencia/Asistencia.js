@@ -64,7 +64,7 @@ const AsistenciaCaninos = () => {
         return
       }
 
-      const baseUrl = `${import.meta.env.VITE_API_BASE}/asistencias/`
+      const baseUrl = `${import.meta.env.VITE_API_BASE}/asistencias/listar/`;
       const url = `${baseUrl}?solo_presentes=true` // el backend decide qué significa "presentes"
       console.log('GET asistencias del día ->', url)
 
@@ -221,12 +221,22 @@ const AsistenciaCaninos = () => {
 
       const url = `${import.meta.env.VITE_API_BASE}/asistencias/`;
 
+      const hoy = new Date();
+
+      // Construir YYYY-MM-DD usando la hora local
+      const yyyy = hoy.getFullYear();
+      const mm = String(hoy.getMonth() + 1).padStart(2, '0'); // Mes: 0-11
+      const dd = String(hoy.getDate()).padStart(2, '0');
+
+      const fechaLocal = `${yyyy}-${mm}-${dd}`;
       // 🔹 Payload ajustado según tu modelo
       const payload = {
         id_canino: Number(canino), // debe ser número
         tipo_llegada: tipo_llegada, // 'Ruta' o 'Propietario'
-        fecha: new Date().toISOString().slice(0, 10), // YYYY-MM-DD
+        fecha: fechaLocal
       };
+      console.log('Fecha local (frontend) que se enviará:', new Date().toISOString(), '->', new Date().toISOString().slice(0,10));
+
 
       console.log('POST asistencia ->', url, payload);
 
