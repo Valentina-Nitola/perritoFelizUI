@@ -20,7 +20,7 @@ export const profileService = {
 
   async updateProfile(data, token) {
     const res = await fetch(API_URL, {
-      method: "PUT",
+      method: "PATCH",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,

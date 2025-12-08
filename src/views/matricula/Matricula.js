@@ -30,7 +30,7 @@ const MatricularCanino = () => {
     transporte: '',
     nombre: '',
     raza: '',
-    nacimiento: '',
+    fecha_nacimiento: '',
     talla: '',
   })
   const [vacunasPdf, setVacunasPdf] = useState(null) // File
@@ -66,7 +66,7 @@ const MatricularCanino = () => {
     setForm((prev) => ({ ...prev, [name]: value }))
 
     // Si el usuario cambia nacimiento, validamos en caliente
-    if (name === 'nacimiento') {
+    if (name === 'fecha_nacimiento') {
       setNacimientoError(validateNacimiento(value, maxNacimiento))
     }
   }
@@ -132,6 +132,7 @@ const MatricularCanino = () => {
       }
 
       setMascotas(lista)
+      console.log('Mascotas cargadas:', lista);
     } catch (err) {
       console.error('Error en fetchMascotas:', err)
       setErrorMascotas('Ocurrió un error al cargar tus mascotas.')
@@ -153,7 +154,7 @@ const MatricularCanino = () => {
     const allFilled = Object.values(form).every((v) => String(v).trim() !== '')
     if (!allFilled) return
 
-    const nErr = validateNacimiento(form.nacimiento, maxNacimiento)
+    const nErr = validateNacimiento(form.fecha_nacimiento, maxNacimiento)
     setNacimientoError(nErr)
     if (nErr) return
 
@@ -196,7 +197,7 @@ const MatricularCanino = () => {
       } else if (isEditing) {
         // Si estamos editando y NO se subió un nuevo PDF,
         // conservamos el que ya tenía la matrícula
-        const actual = mascotas.find((m) => m.id === editingId)
+        const actual = mascotas.find((m) => m.id_matricula === editingId)
         vacunasUrl = actual?.vacunas_url || ''
       }
 
@@ -210,7 +211,7 @@ const MatricularCanino = () => {
       fd.append('nombre', form.nombre)
       fd.append('raza', form.raza)
       fd.append('talla', form.talla)
-      fd.append('nacimiento', form.nacimiento)
+      fd.append('fecha_nacimiento', form.fecha_nacimiento)
       fd.append('plan', form.plan)
       fd.append('transporte', form.transporte)
       if (vacunasUrl) {
@@ -260,7 +261,7 @@ const MatricularCanino = () => {
       transporte: '',
       nombre: '',
       raza: '',
-      nacimiento: '',
+      fecha_nacimiento: '',
       talla: '',
     })
     setVacunasPdf(null)
@@ -276,7 +277,7 @@ const MatricularCanino = () => {
 
     try {
       setDeletingId(id)
-
+      console.log("ID matrícula a eliminar:", id);
       const accessToken =
         localStorage.getItem('access') ||
         localStorage.getItem('accessToken') ||
@@ -297,14 +298,15 @@ const MatricularCanino = () => {
         },
       })
 
-      if (!res.ok) {
-        const text = await res.text()
+      const text = await res.text()
+
+      if (!res.ok && res.status < 200 || res.status >= 300) {
         console.error('Error body DELETE matrícula:', text)
         throw new Error(text || 'No se pudo eliminar la matrícula.')
       }
 
       // Quitamos la matrícula de la tabla en memoria
-      setMascotas((prev) => prev.filter((m) => m.id !== id))
+      setMascotas((prev) => prev.filter((m) => m.id_matricula !== id))
       alert('Matrícula eliminada correctamente.')
     } catch (err) {
       console.error(err)
@@ -316,13 +318,13 @@ const MatricularCanino = () => {
 
   // -------- INICIAR EDICIÓN DESDE LA TABLA --------
   const startEdit = (m) => {
-    setEditingId(m.id)
+    setEditingId(m.id_matricula)
     setForm({
       plan: m.plan || '',
       transporte: m.transporte || '',
       nombre: m.nombre || '',
       raza: m.raza || '',
-      nacimiento: m.nacimiento || '',
+      nacimiento: m.fecha_nacimiento || '',
       talla: m.talla || '',
     })
     setVacunasPdf(null)
@@ -354,7 +356,7 @@ const MatricularCanino = () => {
               <CCol md={6}>
                 {/* Plan de matrícula */}
                 <div className="mb-3">
-                  <CInputGroup hasValidation>
+                  <CInputGroup>
                     <CInputGroupText>
                       <CIcon icon={cilBadge} />
                     </CInputGroupText>
@@ -375,7 +377,7 @@ const MatricularCanino = () => {
               <CCol md={6}>
                 {/* Plan de transporte */}
                 <div className="mb-3">
-                  <CInputGroup hasValidation>
+                  <CInputGroup>
                     <CInputGroupText>
                       <CIcon icon={cilBusAlt} />
                     </CInputGroupText>
@@ -400,7 +402,7 @@ const MatricularCanino = () => {
               <CCol md={6}>
                 {/* Nombre del canino */}
                 <div className="mb-3">
-                  <CInputGroup hasValidation>
+                  <CInputGroup>
                     <CInputGroupText>
                       <CIcon icon={cilUser} />
                     </CInputGroupText>
@@ -420,7 +422,7 @@ const MatricularCanino = () => {
               <CCol md={6}>
                 {/* Raza */}
                 <div className="mb-3">
-                  <CInputGroup hasValidation>
+                  <CInputGroup>
                     <CInputGroupText>
                       <CIcon icon={cilUser} />
                     </CInputGroupText>
@@ -442,14 +444,14 @@ const MatricularCanino = () => {
               <CCol md={6}>
                 {/* Fecha de nacimiento */}
                 <div className="mb-3">
-                  <CInputGroup hasValidation>
+                  <CInputGroup>
                     <CInputGroupText>
                       <CIcon icon={cilBirthdayCake} />
                     </CInputGroupText>
                     <CFormInput
                       type="date"
-                      name="nacimiento"
-                      value={form.nacimiento}
+                      name="fecha_nacimiento"
+                      value={form.fecha_nacimiento}
                       onChange={handleChange}
                       max={maxNacimiento}
                       required
@@ -464,7 +466,7 @@ const MatricularCanino = () => {
               <CCol md={6}>
                 {/* Talla */}
                 <div className="mb-3">
-                  <CInputGroup hasValidation>
+                  <CInputGroup>
                     <CInputGroupText>
                       <CIcon icon={cilBadge} />
                     </CInputGroupText>
@@ -485,7 +487,7 @@ const MatricularCanino = () => {
             <CRow>
               <CCol md={12}>
                 <div className="mb-3">
-                  <CInputGroup hasValidation>
+                  <CInputGroup>
                     <CInputGroupText>PDF carné vacunación</CInputGroupText>
                     <CFormInput
                       type="file"
@@ -570,14 +572,14 @@ const MatricularCanino = () => {
               </CTableHead>
               <CTableBody>
                 {mascotas.map((m, idx) => (
-                  <CTableRow key={m.id ?? idx}>
+                  <CTableRow key={m.id_matricula ?? idx}>
                     <CTableDataCell>{idx + 1}</CTableDataCell>
                     <CTableDataCell>{m.nombre}</CTableDataCell>
                     <CTableDataCell>{m.raza}</CTableDataCell>
                     <CTableDataCell>{m.plan}</CTableDataCell>
                     <CTableDataCell>{m.transporte}</CTableDataCell>
                     <CTableDataCell>{m.talla}</CTableDataCell>
-                    <CTableDataCell>{m.nacimiento}</CTableDataCell>
+                    <CTableDataCell>{m.fecha_nacimiento}</CTableDataCell>
                     <CTableDataCell>
                       {m.vacunas_url ? (
                         <a href={m.vacunas_url} target="_blank" rel="noopener noreferrer">
@@ -594,7 +596,7 @@ const MatricularCanino = () => {
                         variant="outline"
                         className="me-2"
                         onClick={() => startEdit(m)}
-                        disabled={deletingId === m.id || submitting}
+                        disabled={deletingId === m.id_matricula || submitting}
                       >
                         Editar
                       </CButton>
@@ -602,10 +604,10 @@ const MatricularCanino = () => {
                         color="danger"
                         size="sm"
                         variant="outline"
-                        onClick={() => handleDelete(m.id)}
-                        disabled={deletingId === m.id || submitting}
+                        onClick={() => handleDelete(m.id_matricula)}
+                        disabled={deletingId === m.id_matricula || submitting}
                       >
-                        {deletingId === m.id ? 'Eliminando…' : 'Eliminar'}
+                        {deletingId === m.id_matricula ? 'Eliminando…' : 'Eliminar'}
                       </CButton>
                     </CTableDataCell>
                   </CTableRow>
