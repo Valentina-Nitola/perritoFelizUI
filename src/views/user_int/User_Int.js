@@ -272,7 +272,7 @@ const InternalUsers = () => {
     try {
       // TODO: ajustar endpoint a tu backend real
       const res = await fetch(
-        `${import.meta.env.VITE_API_BASE}/usuarios-internos/${user.id}/toggle-activo/`,
+        `${import.meta.env.VITE_API_BASE}/usuarios-internos/${user.id_usuario}/toggle-activo/`,
         {
           method: 'POST',
           headers: {
