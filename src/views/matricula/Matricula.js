@@ -66,7 +66,7 @@ const MatricularCanino = () => {
     setForm((prev) => ({ ...prev, [name]: value }))
 
     // Si el usuario cambia nacimiento, validamos en caliente
-    if (name === 'nacimiento') {
+    if (name === 'fecha_nacimiento') {
       setNacimientoError(validateNacimiento(value, maxNacimiento))
     }
   }
@@ -261,7 +261,7 @@ const MatricularCanino = () => {
       transporte: '',
       nombre: '',
       raza: '',
-      nacimiento: '',
+      fecha_nacimiento: '',
       talla: '',
     })
     setVacunasPdf(null)
@@ -356,7 +356,7 @@ const MatricularCanino = () => {
               <CCol md={6}>
                 {/* Plan de matrícula */}
                 <div className="mb-3">
-                  <CInputGroup hasValidation>
+                  <CInputGroup>
                     <CInputGroupText>
                       <CIcon icon={cilBadge} />
                     </CInputGroupText>
@@ -377,7 +377,7 @@ const MatricularCanino = () => {
               <CCol md={6}>
                 {/* Plan de transporte */}
                 <div className="mb-3">
-                  <CInputGroup hasValidation>
+                  <CInputGroup>
                     <CInputGroupText>
                       <CIcon icon={cilBusAlt} />
                     </CInputGroupText>
@@ -402,7 +402,7 @@ const MatricularCanino = () => {
               <CCol md={6}>
                 {/* Nombre del canino */}
                 <div className="mb-3">
-                  <CInputGroup hasValidation>
+                  <CInputGroup>
                     <CInputGroupText>
                       <CIcon icon={cilUser} />
                     </CInputGroupText>
@@ -422,7 +422,7 @@ const MatricularCanino = () => {
               <CCol md={6}>
                 {/* Raza */}
                 <div className="mb-3">
-                  <CInputGroup hasValidation>
+                  <CInputGroup>
                     <CInputGroupText>
                       <CIcon icon={cilUser} />
                     </CInputGroupText>
@@ -444,7 +444,7 @@ const MatricularCanino = () => {
               <CCol md={6}>
                 {/* Fecha de nacimiento */}
                 <div className="mb-3">
-                  <CInputGroup hasValidation>
+                  <CInputGroup>
                     <CInputGroupText>
                       <CIcon icon={cilBirthdayCake} />
                     </CInputGroupText>
@@ -466,7 +466,7 @@ const MatricularCanino = () => {
               <CCol md={6}>
                 {/* Talla */}
                 <div className="mb-3">
-                  <CInputGroup hasValidation>
+                  <CInputGroup>
                     <CInputGroupText>
                       <CIcon icon={cilBadge} />
                     </CInputGroupText>
@@ -487,7 +487,7 @@ const MatricularCanino = () => {
             <CRow>
               <CCol md={12}>
                 <div className="mb-3">
-                  <CInputGroup hasValidation>
+                  <CInputGroup>
                     <CInputGroupText>PDF carné vacunación</CInputGroupText>
                     <CFormInput
                       type="file"
