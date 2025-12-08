@@ -105,7 +105,7 @@ const InternalUsers = () => {
         await refreshList()
       } else {
         // --------- EDITAR / ACTUALIZAR USUARIO ---------
-        if (!editingUser.id) {
+        if (!editingUser.id_usuario) {
           throw new Error('No se encontró el ID del usuario a editar.')
         }
 
@@ -122,7 +122,7 @@ const InternalUsers = () => {
         }
 
         const res = await fetch(
-          `${import.meta.env.VITE_API_BASE}/usuarios-internos/${editingUser.id}/`,
+          `${import.meta.env.VITE_API_BASE}/usuarios-internos/${editingUser.id_usuario}/`,
           {
             method: 'PATCH',
             headers: {
@@ -260,7 +260,7 @@ const InternalUsers = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  const handleToggleActiveUser = async (user) => {
+  const handleToggleActiveUser = async (user) => {  
     const estaActivo = user.activo // ajusta al nombre real del campo en tu backend
     const accion = estaActivo ? 'Desactivar' : 'Activar'
 
