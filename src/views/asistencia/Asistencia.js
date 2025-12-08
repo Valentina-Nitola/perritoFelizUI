@@ -29,7 +29,7 @@ const AsistenciaCaninos = () => {
   const [form, setForm] = useState({
     duenoDocumento: '', // cédula del dueño
     canino: '', // id de la matrícula / canino
-    llegoRuta: '',
+    tipo_llegada: '',
     llegoDuenio: '',
   })
   const [validated, setValidated] = useState(false)
@@ -182,13 +182,17 @@ const AsistenciaCaninos = () => {
   const handleChange = (e) => {
     const { name, value } = e.target
     setForm((prev) => ({ ...prev, [name]: value }))
+
+    if (name === 'canino') {
+      console.log('Mascota seleccionada id_matricula:', value)
+    }
   }
 
   const handleReset = () => {
     setForm({
       duenoDocumento: '',
       canino: '',
-      llegoRuta: '',
+      tipo_llegada: '',
       llegoDuenio: '',
     })
     setMascotasDueno([])
@@ -198,38 +202,33 @@ const AsistenciaCaninos = () => {
   }
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    setValidated(true)
+    e.preventDefault();
+    setValidated(true);
+    
 
-    const { duenoDocumento, canino, llegoRuta, llegoDuenio } = form
-    const camposLlenos =
-      duenoDocumento.trim() !== '' &&
-      String(canino).trim() !== '' &&
-      String(llegoRuta).trim() !== '' &&
-      String(llegoDuenio).trim() !== ''
+    // 🔹 Destructuring correcto de tu form
+    const { canino, tipo_llegada } = form;
 
-    if (!camposLlenos) return
+    // Validar campos
+    if (!canino || !tipo_llegada) {
+      return alert('Por favor completa todos los campos.');
+    }
 
     try {
-      setSubmitting(true)
+      setSubmitting(true);
+      const accessToken = getAccessToken();
+      if (!accessToken) return alert('No hay sesión iniciada.');
 
-      const accessToken = getAccessToken()
-      if (!accessToken) {
-        alert('No hay sesión iniciada.')
-        return
-      }
+      const url = `${import.meta.env.VITE_API_BASE}/asistencias/`;
 
-      const baseUrl = `${import.meta.env.VITE_API_BASE}/asistencias/`
-      const url = baseUrl
-
+      // 🔹 Payload ajustado según tu modelo
       const payload = {
-        mascota_id: canino,
-        llego_ruta: llegoRuta === 'si',
-        llego_duenio: llegoDuenio === 'si',
-        // fecha/hora la podría calcular el backend
-      }
+        id_canino: Number(canino), // debe ser número
+        tipo_llegada: tipo_llegada, // 'Ruta' o 'Propietario'
+        fecha: new Date().toISOString().slice(0, 10), // YYYY-MM-DD
+      };
 
-      console.log('POST asistencia ->', url, payload)
+      console.log('POST asistencia ->', url, payload);
 
       const res = await fetch(url, {
         method: 'POST',
@@ -238,24 +237,28 @@ const AsistenciaCaninos = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(payload),
-      })
+      });
 
       if (!res.ok) {
-        const text = await res.text()
-        console.error('Error body en crear asistencia:', text)
-        throw new Error(text || 'No se pudo registrar la asistencia.')
+        const text = await res.text();
+        console.error('Error body en crear asistencia:', text);
+        throw new Error(text || 'No se pudo registrar la asistencia.');
       }
 
-      alert('Asistencia registrada correctamente.')
-      handleReset()
-      fetchAsistencias()
+      alert('Asistencia registrada correctamente.');
+      handleReset();
+      fetchAsistencias(); // recargar listado
     } catch (err) {
-      console.error(err)
-      alert('Ocurrió un problema al registrar la asistencia.')
+      console.error(err);
+      alert('Ocurrió un problema al registrar la asistencia.');
     } finally {
-      setSubmitting(false)
+      setSubmitting(false);
     }
-  }
+  };
+
+
+
+
 
   // ---------- ELIMINAR ASISTENCIA ----------
   const handleDelete = async (id) => {
@@ -373,14 +376,13 @@ const AsistenciaCaninos = () => {
                           ? 'Primero busca al dueño'
                           : 'Selecciona un canino'}
                       </option>
-                      {mascotasDueno.map((m) => (
-                        <option key={m.id} value={m.id}>
-                          {/* Nombre + algo más para identificar mejor */}
-                          {m.nombre} {m.raza ? `- ${m.raza}` : ''}{' '}
-                          {m.talla ? `(${m.talla})` : ''}
+                      {mascotasDueno.map((m, idx) => (
+                        <option key={m.id_matricula ?? idx} value={m.id_canino}>
+                          {m.nombre} {m.raza ? `- ${m.raza}` : ''} {m.talla ? `(${m.talla})` : ''}
                         </option>
                       ))}
                     </CFormSelect>
+
                     <CFormFeedback invalid>Selecciona un canino matriculado.</CFormFeedback>
                   </CInputGroup>
                 </div>
@@ -394,41 +396,22 @@ const AsistenciaCaninos = () => {
                       <CIcon icon={cilBusAlt} />
                     </CInputGroupText>
                     <CFormSelect
-                      name="llegoRuta"
-                      value={form.llegoRuta}
+                      name="tipo_llegada"
+                      value={form.tipo_llegada}
                       onChange={handleChange}
                       required
                     >
-                      <option value="">Ruta</option>
-                      <option value="si">Sí</option>
-                      <option value="no">No</option>
+                      <option value="">Selecciona tipo de llegada</option>
+                      <option value="Ruta">Ruta</option>
+                      <option value="Propietario">Propietario</option>
                     </CFormSelect>
+                                          
                     <CFormFeedback invalid>Selecciona una opción.</CFormFeedback>
                   </CInputGroup>
                 </div>
               </CCol>
 
-              {/* Llegó con el dueño */}
-              <CCol md={1.5}>
-                <div className="mb-3">
-                  <CInputGroup hasValidation>
-                    <CInputGroupText>
-                      <CIcon icon={cilUser} />
-                    </CInputGroupText>
-                    <CFormSelect
-                      name="llegoDuenio"
-                      value={form.llegoDuenio}
-                      onChange={handleChange}
-                      required
-                    >
-                      <option value="">Dueño</option>
-                      <option value="si">Sí</option>
-                      <option value="no">No</option>
-                    </CFormSelect>
-                    <CFormFeedback invalid>Selecciona una opción.</CFormFeedback>
-                  </CInputGroup>
-                </div>
-              </CCol>
+             
             </CRow>
 
             <div className="d-grid d-sm-flex gap-2">
