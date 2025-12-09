@@ -61,6 +61,7 @@ const AsistenciaCaninos = () => {
     salidaAnticipada: false,
     tipoSalida: '',
     observaciones: '',
+    motivoSalida: '',
     // progreso aprendizaje
     obediencia: '',
     animo: '',
@@ -73,6 +74,7 @@ const AsistenciaCaninos = () => {
     peso: '',
     abdomen: '',
   })
+
   const [salidaValidated, setSalidaValidated] = useState(false)
   const [salidaSubmitting, setSalidaSubmitting] = useState(false)
 
@@ -408,13 +410,14 @@ const AsistenciaCaninos = () => {
       }
 
       // 👉 endpoint de ejemplo, el backend debe implementarlo
-      const url = `${import.meta.env.VITE_API_BASE}/asistencias/registrar_salida/`
+      const url = `${import.meta.env.VITE_API_BASE}/asistencias/registrar-salida/`
 
       const payload = {
         id_asistencia: asistenciaSeleccionada.id,
         salida_anticipada: salidaForm.salidaAnticipada,
-        tipo_salida: salidaForm.tipoSalida, // 'Ruta' o 'Propietario'
+        quien_retiro: salidaForm.tipoSalida,
         observaciones: salidaForm.observaciones.trim() || null, // opcional
+        motivo_salida: salidaForm.motivoSalida?.trim() || null,
       }
 
       if (requiereProgreso) {
@@ -711,6 +714,24 @@ const AsistenciaCaninos = () => {
                 <CFormFeedback invalid>Selecciona el tipo de salida.</CFormFeedback>
               </CInputGroup>
             </div>
+
+            {/* Motivo de salida */}
+            <div className="mt-3">
+              <label className="form-label">Motivo de salida</label>
+              <CFormTextarea
+                name="motivoSalida"
+                rows={3}
+                placeholder="Escriba el motivo de la salida…"
+                value={salidaForm.motivoSalida}
+                onChange={handleSalidaChange}
+                required
+              />
+            </div>
+
+
+
+            
+
 
             {/* SOLO si NO es salida anticipada mostramos progreso */}
             {!salidaForm.salidaAnticipada && (
