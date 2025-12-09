@@ -1,6 +1,3 @@
-// ----------------------------------------------
-// src/views/profile/Profile.js
-// ----------------------------------------------
 import React, { useMemo, useRef, useState, useEffect } from 'react'
 import {
   CBadge,
@@ -21,12 +18,13 @@ import CIcon from '@coreui/icons-react'
 import { cilCalendar, cilEnvelopeClosed, cilHome, cilPhone, cilUser, cilBadge } from '@coreui/icons'
 import { useAuthUser } from 'src/context/AuthUserContext'
 import { profileService } from 'src/services/profileService'
+import { supabase } from '../../supabaseClient'
 
-// ----------------------------------------------
-// Usuario por defecto (mock local)
-// ----------------------------------------------
+// ---------------------------------------------------------------------
+// MOCK_USER base (ajústalo si ya lo tienes definido en otro archivo)
+// ---------------------------------------------------------------------
 const MOCK_USER = {
-  name: 'Usuario',
+  name: '',
   lastname: '',
   nacimiento: '',
   correo: '',
@@ -36,27 +34,46 @@ const MOCK_USER = {
   role: 'cliente',
   petsCount: 0,
   createdAt: '',
-  about: 'Aquí puedes escribir algo sobre ti...',
-  avatarUrl: 'https://cdn-icons-png.flaticon.com/512/847/847969.png',
+  about: '',
+  avatarUrl: 'https://via.placeholder.com/190',
 }
 
-// ----------------------------------------------
+// ---------------------------------------------------------------------
 // Helpers
-// ----------------------------------------------
-const fmtDate = (isoStr) => {
-  if (!isoStr) return ''
-  const d = new Date(isoStr)
+// ---------------------------------------------------------------------
+const fmtDate = (value) => {
+  if (!value) return ''
+
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return value
+  }
+
+  const d = new Date(value)
   if (Number.isNaN(d.getTime())) return ''
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
+
+  const y = d.getUTCFullYear()
+  const m = String(d.getUTCMonth() + 1).padStart(2, '0')
+  const day = String(d.getUTCDate()).padStart(2, '0')
   return `${y}-${m}-${day}`
 }
 
-const getAge = (isoStr) => {
-  if (!isoStr) return ''
-  const b = new Date(isoStr)
-  if (Number.isNaN(b.getTime())) return ''
+const parseYmdToDate = (yyyyMmDd) => {
+  if (!yyyyMmDd) return null
+  const [y, m, d] = yyyyMmDd.split('-').map(Number)
+  if (!y || !m || !d) return null
+  return new Date(y, m - 1, d)
+}
+
+const getAge = (dateStr) => {
+  if (!dateStr) return ''
+
+  const b = /^\d{4}-\d{2}-\d{2}$/.test(dateStr)
+    ? parseYmdToDate(dateStr)
+    : new Date(dateStr)
+
+  if (!b || Number.isNaN(b.getTime())) return ''
+
   const t = new Date()
   let age = t.getFullYear() - b.getFullYear()
   const m = t.getMonth() - b.getMonth()
@@ -64,33 +81,38 @@ const getAge = (isoStr) => {
   return age
 }
 
-const roleColor = (role) => {
-  switch (role?.toLowerCase()) {
-    case 'director': return 'danger'
-    case 'administrador': return 'warning'
-    case 'entrenador': return 'info'
-    case 'cliente': return 'success'
-    default: return 'secondary'
-  }
-}
-
-// ----------------------------------------------
-// Validaciones
-// ----------------------------------------------
-const nameRe = /^[A-Za-zÀ-ÿ\u00f1\u00d1 ]{2,60}$/
-const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
-const digitsRe = /^[0-9]{7,15}$/
 const isFuture = (yyyyMmDd) => {
   if (!yyyyMmDd) return false
-  const d = new Date(yyyyMmDd)
+  const d = parseYmdToDate(yyyyMmDd)
+  if (!d) return false
   const today = new Date()
-  d.setHours(0,0,0,0); today.setHours(0,0,0,0)
+  d.setHours(0, 0, 0, 0)
+  today.setHours(0, 0, 0, 0)
   return d.getTime() > today.getTime()
 }
 
-// ----------------------------------------------
+const nameRe = /^[A-Za-zÀ-ÿ\u00f1\u00d1 ]{2,60}$/
+const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
+const digitsRe = /^[0-9]{7,15}$/
+
+const roleColor = (role) => {
+  switch (role?.toLowerCase()) {
+    case 'director':
+      return 'danger'
+    case 'administrador':
+      return 'warning'
+    case 'entrenador':
+      return 'info'
+    case 'cliente':
+      return 'success'
+    default:
+      return 'secondary'
+  }
+}
+
+// ---------------------------------------------------------------------
 // Componente principal
-// ----------------------------------------------
+// ---------------------------------------------------------------------
 const Profile = () => {
   const { user: ctxUser, updateUser } = useAuthUser()
 
@@ -103,18 +125,18 @@ const Profile = () => {
   const [validated, setValidated] = useState(false)
   const fileRef = useRef(null)
 
-  // ----------------------------------------------
+  // -------------------------------------------------------------------
   // Cargar perfil desde el backend
-  // ----------------------------------------------
+  // -------------------------------------------------------------------
   useEffect(() => {
     const fetchProfile = async () => {
       try {
         const token = localStorage.getItem('access')
-        console.log("🔹 Token del localStorage:", token) // 👈 agrega esto
+        console.log('Token del localStorage:', token)
         if (!token) return
+
         const data = await profileService.getProfile(token)
 
-        // 🔹 Mapeo de los campos reales del backend → frontend
         const usuario = {
           name: data.nombres || '',
           lastname: data.apellidos || '',
@@ -133,8 +155,14 @@ const Profile = () => {
         setForm(usuario)
         setBaseUser(usuario)
         setAvatarUrl(usuario.avatarUrl)
-        updateUser(usuario)
-        console.log("Usuario:",usuario)
+
+        updateUser({
+          ...ctxUser,
+          ...usuario,
+          role: ctxUser?.role,
+        })
+
+        console.log('Usuario:', usuario)
       } catch (err) {
         console.error('Error al obtener perfil:', err)
       }
@@ -143,9 +171,9 @@ const Profile = () => {
     fetchProfile()
   }, [])
 
-  // ----------------------------------------------
+  // -------------------------------------------------------------------
   // Validaciones
-  // ----------------------------------------------
+  // -------------------------------------------------------------------
   const validateField = (name, value) => {
     switch (name) {
       case 'name':
@@ -188,9 +216,9 @@ const Profile = () => {
     return Object.keys(nextErrors).length === 0
   }
 
-  // ----------------------------------------------
+  // -------------------------------------------------------------------
   // Handlers
-  // ----------------------------------------------
+  // -------------------------------------------------------------------
   const handleChange = (e) => {
     const { name, value } = e.target
     setForm((prev) => ({ ...prev, [name]: value ?? '' }))
@@ -223,40 +251,91 @@ const Profile = () => {
     setEditMode((v) => !v)
   }
 
+  const uploadAvatarToSupabase = async (file, userId) => {
+    try {
+      if (!file) return null
+
+      const fileExt = file.name.split('.').pop()
+      const filePath = `${userId}.${fileExt}`
+
+      console.log('Subiendo a:', filePath)
+
+      const { error: uploadError } = await supabase.storage
+        .from('profile-photos')
+        .upload(filePath, file, { upsert: true })
+
+      if (uploadError) {
+        console.error(uploadError)
+        alert('Error subiendo imagen')
+        return null
+      }
+
+      const { data } = supabase.storage.from('profile-photos').getPublicUrl(filePath)
+
+      console.log('URL pública:', data.publicUrl)
+      return data.publicUrl
+    } catch (error) {
+      console.error('Error subiendo avatar:', error)
+      return null
+    }
+  }
+
   const handleSave = async () => {
     if (!validateAll()) return
+
     try {
       const token = localStorage.getItem('access')
+
       const data = {
         nombres: form.name,
         apellidos: form.lastname,
-        fecha_nacimiento: form.nacimiento,
+        fecha_nacimiento: form.nacimiento, // ya viene en 'YYYY-MM-DD' correcto
         telefono: form.celular,
         email: form.correo,
         direccion: form.direccion,
       }
+
       await profileService.updateProfile(data, token)
-      alert('✅ Perfil actualizado correctamente.')
+
+      if (avatarFile) {
+        const userId = ctxUser?.id || ctxUser?.pk || data.documento
+
+        const publicUrl = await uploadAvatarToSupabase(avatarFile, userId)
+
+        if (publicUrl) {
+          await profileService.updateProfile({ foto: publicUrl }, token)
+          setAvatarUrl(publicUrl)
+          updateUser({ ...ctxUser, avatarUrl: publicUrl })
+        }
+      }
+
+      alert('Perfil actualizado correctamente.')
       setEditMode(false)
     } catch (err) {
       console.error('Error al actualizar perfil:', err)
-      alert('⚠️ Error al actualizar el perfil.')
+      alert('Error al actualizar el perfil.')
     }
   }
 
   const age = useMemo(() => getAge(form.nacimiento), [form.nacimiento])
 
-  // ----------------------------------------------
+  // -------------------------------------------------------------------
   // Render
-  // ----------------------------------------------
+  // -------------------------------------------------------------------
   return (
     <CRow className="g-4">
       {/* Columna izquierda */}
       <CCol lg={7}>
         <CCard className="mb-3">
-          <CCardHeader className="p-4" style={{ background: 'linear-gradient(135deg,#165f7b,#2c6e91)', color: 'white' }}>
+          <CCardHeader
+            className="p-4"
+            style={{ background: 'linear-gradient(135deg,#165f7b,#2c6e91)', color: 'white' }}
+          >
             <h3 className="mb-2">Hola {form.name || 'Usuario'},</h3>
-            <p className="mb-3">Esta es tu sección de perfil. Puedes editar tu información personal para mantenernos conectados.</p>
+            <p className="mb-3">
+              Esta es tu sección de perfil. Puedes editar tu información personal para mantenernos
+              conectados.
+            </p>
             <div className="d-flex gap-2">
               <CButton color="success" onClick={handleEditToggle}>
                 {editMode ? 'Cancelar' : 'Editar perfil'}
@@ -273,7 +352,9 @@ const Profile = () => {
                 {/* Nombres */}
                 <CCol md={6}>
                   <CInputGroup hasValidation>
-                    <CInputGroupText><CIcon icon={cilUser} /></CInputGroupText>
+                    <CInputGroupText>
+                      <CIcon icon={cilUser} />
+                    </CInputGroupText>
                     <CFormInput
                       name="name"
                       value={form.name || ''}
@@ -290,7 +371,9 @@ const Profile = () => {
                 {/* Apellidos */}
                 <CCol md={6}>
                   <CInputGroup hasValidation>
-                    <CInputGroupText><CIcon icon={cilUser} /></CInputGroupText>
+                    <CInputGroupText>
+                      <CIcon icon={cilUser} />
+                    </CInputGroupText>
                     <CFormInput
                       name="lastname"
                       value={form.lastname || ''}
@@ -307,7 +390,9 @@ const Profile = () => {
                 {/* Fecha de nacimiento */}
                 <CCol md={6}>
                   <CInputGroup hasValidation>
-                    <CInputGroupText><CIcon icon={cilCalendar} /></CInputGroupText>
+                    <CInputGroupText>
+                      <CIcon icon={cilCalendar} />
+                    </CInputGroupText>
                     <CFormInput
                       type="date"
                       name="nacimiento"
@@ -324,7 +409,9 @@ const Profile = () => {
                 {/* Correo */}
                 <CCol md={6}>
                   <CInputGroup hasValidation>
-                    <CInputGroupText><CIcon icon={cilEnvelopeClosed} /></CInputGroupText>
+                    <CInputGroupText>
+                      <CIcon icon={cilEnvelopeClosed} />
+                    </CInputGroupText>
                     <CFormInput
                       name="correo"
                       value={form.correo || ''}
@@ -341,11 +428,26 @@ const Profile = () => {
                 {/* Celular */}
                 <CCol md={6}>
                   <CInputGroup hasValidation>
-                    <CInputGroupText><CIcon icon={cilPhone} /></CInputGroupText>
+                    <CInputGroupText>
+                      <CIcon icon={cilPhone} />
+                    </CInputGroupText>
                     <CFormInput
                       name="celular"
                       value={form.celular || ''}
-                      onChange={handleChange}
+                      onChange={(e) => {
+                        const numeric = (e.target.value || '').replace(/\D/g, '')
+                        handleChange({ target: { name: 'celular', value: numeric } })
+                      }}
+                      onKeyDown={(e) => {
+                        if (
+                          !/[0-9]/.test(e.key) &&
+                          !['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab'].includes(
+                            e.key,
+                          )
+                        ) {
+                          e.preventDefault()
+                        }
+                      }}
                       readOnly={!editMode}
                       invalid={!!errors.celular}
                       required
@@ -358,7 +460,9 @@ const Profile = () => {
                 {/* Dirección */}
                 <CCol md={6}>
                   <CInputGroup hasValidation>
-                    <CInputGroupText><CIcon icon={cilHome} /></CInputGroupText>
+                    <CInputGroupText>
+                      <CIcon icon={cilHome} />
+                    </CInputGroupText>
                     <CFormInput
                       name="direccion"
                       value={form.direccion || ''}
@@ -375,7 +479,9 @@ const Profile = () => {
                 {/* Documento */}
                 <CCol md={6}>
                   <CInputGroup>
-                    <CInputGroupText><CIcon icon={cilBadge} /></CInputGroupText>
+                    <CInputGroupText>
+                      <CIcon icon={cilBadge} />
+                    </CInputGroupText>
                     <CFormInput
                       name="documento"
                       value={form.documento || ''}
@@ -417,11 +523,20 @@ const Profile = () => {
               </div>
             </div>
 
-            <input ref={fileRef} type="file" accept="image/*" className="d-none" onChange={handleAvatarChange} />
-            <CButton color="link" className="p-0 mb-3" onClick={handlePickAvatar}>Editar</CButton>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              className="d-none"
+              onChange={handleAvatarChange}
+            />
+            <CButton color="link" className="p-0 mb-3" onClick={handlePickAvatar}>
+              Editar
+            </CButton>
 
             <h6 className="mb-0 text-center">
-              {form.name} {form.lastname}{age ? `, ${age}` : ''} años
+              {form.name} {form.lastname}
+              {age ? `, ${age}` : ''} años
             </h6>
 
             <div className="d-flex justify-content-center align-items-center gap-4 my-3">
