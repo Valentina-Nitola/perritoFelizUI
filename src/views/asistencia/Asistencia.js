@@ -61,6 +61,17 @@ const AsistenciaCaninos = () => {
     salidaAnticipada: false,
     tipoSalida: '',
     observaciones: '',
+    // progreso aprendizaje
+    obediencia: '',
+    animo: '',
+    actividad: '',
+    conciencia: '',
+    sociabilidad: '',
+    // salud
+    mucosas: '',
+    pelajePiel: '',
+    peso: '',
+    abdomen: '',
   })
   const [salidaValidated, setSalidaValidated] = useState(false)
   const [salidaSubmitting, setSalidaSubmitting] = useState(false)
@@ -326,6 +337,15 @@ const AsistenciaCaninos = () => {
       salidaAnticipada: false,
       tipoSalida: '',
       observaciones: '',
+      obediencia: '',
+      animo: '',
+      actividad: '',
+      conciencia: '',
+      sociabilidad: '',
+      mucosas: '',
+      pelajePiel: '',
+      peso: '',
+      abdomen: '',
     })
     setSalidaValidated(false)
     setSalidaModalVisible(true)
@@ -353,6 +373,27 @@ const AsistenciaCaninos = () => {
       return
     }
 
+    const requiereProgreso = !salidaForm.salidaAnticipada
+
+    if (requiereProgreso) {
+      const camposProgreso = [
+        'obediencia',
+        'animo',
+        'actividad',
+        'conciencia',
+        'sociabilidad',
+        'mucosas',
+        'pelajePiel',
+        'peso',
+        'abdomen',
+      ]
+      const faltantes = camposProgreso.filter((c) => !salidaForm[c])
+      if (faltantes.length > 0) {
+        alert('Completa todos los campos de aprendizaje y salud antes de guardar.')
+        return
+      }
+    }
+
     try {
       setSalidaSubmitting(true)
       const accessToken = getAccessToken()
@@ -374,6 +415,18 @@ const AsistenciaCaninos = () => {
         salida_anticipada: salidaForm.salidaAnticipada,
         tipo_salida: salidaForm.tipoSalida, // 'Ruta' o 'Propietario'
         observaciones: salidaForm.observaciones.trim() || null, // opcional
+      }
+
+      if (requiereProgreso) {
+        payload.obediencia = Number(salidaForm.obediencia)
+        payload.animo = Number(salidaForm.animo)
+        payload.actividad = Number(salidaForm.actividad)
+        payload.conciencia = Number(salidaForm.conciencia)
+        payload.sociabilidad = Number(salidaForm.sociabilidad)
+        payload.mucosas = Number(salidaForm.mucosas)
+        payload.pelaje_piel = Number(salidaForm.pelajePiel)
+        payload.peso = Number(salidaForm.peso)
+        payload.abdomen = Number(salidaForm.abdomen)
       }
 
       console.log('POST registrar salida ->', url, payload)
@@ -403,6 +456,11 @@ const AsistenciaCaninos = () => {
       setSalidaSubmitting(false)
     }
   }
+
+  // opciones de 1 a 5 con descripción genérica (reutilizables)
+  const renderOption = (val, texto) => (
+    <option value={val}>{`${val} – ${texto}`}</option>
+  )
 
   return (
     <>
@@ -578,7 +636,6 @@ const AsistenciaCaninos = () => {
                     <CTableDataCell>{a.llego_duenio ? 'Sí' : 'No'}</CTableDataCell>
                     <CTableDataCell>{a.hora_ingreso || a.created_at || '—'}</CTableDataCell>
                     <CTableDataCell className="text-end">
-                      
                       <CButton
                         color="success"
                         size="sm"
@@ -654,6 +711,179 @@ const AsistenciaCaninos = () => {
                 <CFormFeedback invalid>Selecciona el tipo de salida.</CFormFeedback>
               </CInputGroup>
             </div>
+
+            {/* SOLO si NO es salida anticipada mostramos progreso */}
+            {!salidaForm.salidaAnticipada && (
+              <>
+                <hr />
+                <h6 className="mt-3">Progreso de aprendizaje</h6>
+                <small className="text-body-secondary d-block mb-2">
+                  Califica de 1 (muy deficiente) a 5 (excelente).
+                </small>
+
+                <CRow className="mb-3">
+                  <CCol md={6} className="mb-2">
+                    <label className="form-label">Obediencia</label>
+                    <CFormSelect
+                      name="obediencia"
+                      value={salidaForm.obediencia}
+                      onChange={handleSalidaChange}
+                      required
+                    >
+                      <option value="">Selecciona</option>
+                      {renderOption(1, 'No responde a comandos')}
+                      {renderOption(2, 'Responde con mucha ayuda')}
+                      {renderOption(3, 'Responde a básicos con apoyo')}
+                      {renderOption(4, 'Responde bien a la mayoría')}
+                      {renderOption(5, 'Obedece de forma constante')}
+                    </CFormSelect>
+                  </CCol>
+
+                  <CCol md={6} className="mb-2">
+                    <label className="form-label">Ánimo</label>
+                    <CFormSelect
+                      name="animo"
+                      value={salidaForm.animo}
+                      onChange={handleSalidaChange}
+                      required
+                    >
+                      <option value="">Selecciona</option>
+                      {renderOption(1, 'Muy apático / decaído')}
+                      {renderOption(2, 'Poco animado')}
+                      {renderOption(3, 'Ánimo neutro / normal')}
+                      {renderOption(4, 'Animado y receptivo')}
+                      {renderOption(5, 'Muy motivado')}
+                    </CFormSelect>
+                  </CCol>
+
+                  <CCol md={6} className="mb-2">
+                    <label className="form-label">Actividad</label>
+                    <CFormSelect
+                      name="actividad"
+                      value={salidaForm.actividad}
+                      onChange={handleSalidaChange}
+                      required
+                    >
+                      <option value="">Selecciona</option>
+                      {renderOption(1, 'Actividad nula, no participó')}
+                      {renderOption(2, 'Actividad baja, perezoso')}
+                      {renderOption(3, 'Actividad moderada')}
+                      {renderOption(4, 'Activo casi toda la clase')}
+                      {renderOption(5, 'Muy activo y enfocado')}
+                    </CFormSelect>
+                  </CCol>
+
+                  <CCol md={6} className="mb-2">
+                    <label className="form-label">Conciencia (atención)</label>
+                    <CFormSelect
+                      name="conciencia"
+                      value={salidaForm.conciencia}
+                      onChange={handleSalidaChange}
+                      required
+                    >
+                      <option value="">Selecciona</option>
+                      {renderOption(1, 'Muy distraído')}
+                      {renderOption(2, 'Se distrae con facilidad')}
+                      {renderOption(3, 'Atención intermitente')}
+                      {renderOption(4, 'Buena atención')}
+                      {renderOption(5, 'Atención excelente')}
+                    </CFormSelect>
+                  </CCol>
+
+                  <CCol md={6} className="mb-2">
+                    <label className="form-label">Sociabilidad</label>
+                    <CFormSelect
+                      name="sociabilidad"
+                      value={salidaForm.sociabilidad}
+                      onChange={handleSalidaChange}
+                      required
+                    >
+                      <option value="">Selecciona</option>
+                      {renderOption(1, 'Muy temeroso o agresivo')}
+                      {renderOption(2, 'Tolerancia baja')}
+                      {renderOption(3, 'Sociabilidad aceptable')}
+                      {renderOption(4, 'Sociable con la mayoría')}
+                      {renderOption(5, 'Sociabilidad excelente')}
+                    </CFormSelect>
+                  </CCol>
+                </CRow>
+
+                <h6>Estado de salud</h6>
+                <small className="text-body-secondary d-block mb-2">
+                  Evaluación visual rápida durante la clase.
+                </small>
+
+                <CRow className="mb-3">
+                  <CCol md={6} className="mb-2">
+                    <label className="form-label">Mucosas</label>
+                    <CFormSelect
+                      name="mucosas"
+                      value={salidaForm.mucosas}
+                      onChange={handleSalidaChange}
+                      required
+                    >
+                      <option value="">Selecciona</option>
+                      {renderOption(1, 'Muy pálidas/rojas, preocupante')}
+                      {renderOption(2, 'Algo alteradas')}
+                      {renderOption(3, 'Dentro de lo normal')}
+                      {renderOption(4, 'Buen color y humedad')}
+                      {renderOption(5, 'Excelente')}
+                    </CFormSelect>
+                  </CCol>
+
+                  <CCol md={6} className="mb-2">
+                    <label className="form-label">Pelaje / piel</label>
+                    <CFormSelect
+                      name="pelajePiel"
+                      value={salidaForm.pelajePiel}
+                      onChange={handleSalidaChange}
+                      required
+                    >
+                      <option value="">Selecciona</option>
+                      {renderOption(1, 'Muy descuidado, problemas claros')}
+                      {renderOption(2, 'Opaco, se rasca mucho')}
+                      {renderOption(3, 'Aceptable, pequeños detalles')}
+                      {renderOption(4, 'Pelaje sano y piel bien')}
+                      {renderOption(5, 'Excelente estado')}
+                    </CFormSelect>
+                  </CCol>
+
+                  <CCol md={6} className="mb-2">
+                    <label className="form-label">Peso</label>
+                    <CFormSelect
+                      name="peso"
+                      value={salidaForm.peso}
+                      onChange={handleSalidaChange}
+                      required
+                    >
+                      <option value="">Selecciona</option>
+                      {renderOption(1, 'Muy bajo o muy alto')}
+                      {renderOption(2, 'Algo bajo/alto')}
+                      {renderOption(3, 'Peso aceptable')}
+                      {renderOption(4, 'Buen peso para su talla')}
+                      {renderOption(5, 'Excelente condición corporal')}
+                    </CFormSelect>
+                  </CCol>
+
+                  <CCol md={6} className="mb-2">
+                    <label className="form-label">Abdomen</label>
+                    <CFormSelect
+                      name="abdomen"
+                      value={salidaForm.abdomen}
+                      onChange={handleSalidaChange}
+                      required
+                    >
+                      <option value="">Selecciona</option>
+                      {renderOption(1, 'Dolor/hinchazón marcada')}
+                      {renderOption(2, 'Molestias leves')}
+                      {renderOption(3, 'Normal, sin signos llamativos')}
+                      {renderOption(4, 'Blando, sin dolor')}
+                      {renderOption(5, 'Muy bien, sin molestias')}
+                    </CFormSelect>
+                  </CCol>
+                </CRow>
+              </>
+            )}
 
             {/* Observaciones (opcional) */}
             <div className="mb-3">
