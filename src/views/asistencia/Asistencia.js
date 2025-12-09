@@ -20,6 +20,13 @@ import {
   CTableDataCell,
   CSpinner,
   CAlert,
+  CModal,
+  CModalHeader,
+  CModalTitle,
+  CModalBody,
+  CModalFooter,
+  CFormCheck,
+  CFormTextarea,
 } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
 import { cilUser, cilBusAlt, cilSearch } from '@coreui/icons'
@@ -47,6 +54,17 @@ const AsistenciaCaninos = () => {
   const [errorAsistencias, setErrorAsistencias] = useState('')
   const [deletingId, setDeletingId] = useState(null)
 
+  // estado para el modal de salida / clase terminada
+  const [salidaModalVisible, setSalidaModalVisible] = useState(false)
+  const [asistenciaSeleccionada, setAsistenciaSeleccionada] = useState(null)
+  const [salidaForm, setSalidaForm] = useState({
+    salidaAnticipada: false,
+    tipoSalida: '',
+    observaciones: '',
+  })
+  const [salidaValidated, setSalidaValidated] = useState(false)
+  const [salidaSubmitting, setSalidaSubmitting] = useState(false)
+
   const getAccessToken = () =>
     localStorage.getItem('access') ||
     localStorage.getItem('accessToken') ||
@@ -64,7 +82,7 @@ const AsistenciaCaninos = () => {
         return
       }
 
-      const baseUrl = `${import.meta.env.VITE_API_BASE}/asistencias/listar/`;
+      const baseUrl = `${import.meta.env.VITE_API_BASE}/asistencias/listar/`
       const url = `${baseUrl}?solo_presentes=true` // el backend decide qué significa "presentes"
       console.log('GET asistencias del día ->', url)
 
@@ -131,8 +149,6 @@ const AsistenciaCaninos = () => {
       }
 
       const baseUrl = `${import.meta.env.VITE_API_BASE}/matriculas/`
-      // 👉 Estos query params son un ejemplo para que el backend los use:
-      //   ?dueno_identificacion=<doc>&solo_vigentes=true
       const url = `${baseUrl}?dueno_identificacion=${encodeURIComponent(
         doc,
       )}&solo_vigentes=true`
@@ -168,7 +184,6 @@ const AsistenciaCaninos = () => {
 
       setMascotasDueno(lista)
       setBusquedaRealizada(true)
-      // al cambiar de dueño, limpiamos el canino seleccionado
       setForm((prev) => ({ ...prev, canino: '' }))
     } catch (err) {
       console.error('Error en buscarMascotasPorDueno:', err)
@@ -202,43 +217,41 @@ const AsistenciaCaninos = () => {
   }
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setValidated(true);
-    
+    e.preventDefault()
+    setValidated(true)
 
-    // 🔹 Destructuring correcto de tu form
-    const { canino, tipo_llegada } = form;
+    const { canino, tipo_llegada } = form
 
-    // Validar campos
     if (!canino || !tipo_llegada) {
-      return alert('Por favor completa todos los campos.');
+      return alert('Por favor completa todos los campos.')
     }
 
     try {
-      setSubmitting(true);
-      const accessToken = getAccessToken();
-      if (!accessToken) return alert('No hay sesión iniciada.');
+      setSubmitting(true)
+      const accessToken = getAccessToken()
+      if (!accessToken) return alert('No hay sesión iniciada.')
 
-      const url = `${import.meta.env.VITE_API_BASE}/asistencias/`;
+      const url = `${import.meta.env.VITE_API_BASE}/asistencias/`
 
-      const hoy = new Date();
+      const hoy = new Date()
+      const yyyy = hoy.getFullYear()
+      const mm = String(hoy.getMonth() + 1).padStart(2, '0')
+      const dd = String(hoy.getDate()).padStart(2, '0')
+      const fechaLocal = `${yyyy}-${mm}-${dd}`
 
-      // Construir YYYY-MM-DD usando la hora local
-      const yyyy = hoy.getFullYear();
-      const mm = String(hoy.getMonth() + 1).padStart(2, '0'); // Mes: 0-11
-      const dd = String(hoy.getDate()).padStart(2, '0');
-
-      const fechaLocal = `${yyyy}-${mm}-${dd}`;
-      // 🔹 Payload ajustado según tu modelo
       const payload = {
-        id_canino: Number(canino), // debe ser número
+        id_canino: Number(canino),
         tipo_llegada: tipo_llegada, // 'Ruta' o 'Propietario'
-        fecha: fechaLocal
-      };
-      console.log('Fecha local (frontend) que se enviará:', new Date().toISOString(), '->', new Date().toISOString().slice(0,10));
+        fecha: fechaLocal,
+      }
+      console.log(
+        'Fecha local (frontend) que se enviará:',
+        new Date().toISOString(),
+        '->',
+        new Date().toISOString().slice(0, 10),
+      )
 
-
-      console.log('POST asistencia ->', url, payload);
+      console.log('POST asistencia ->', url, payload)
 
       const res = await fetch(url, {
         method: 'POST',
@@ -247,28 +260,24 @@ const AsistenciaCaninos = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(payload),
-      });
+      })
 
       if (!res.ok) {
-        const text = await res.text();
-        console.error('Error body en crear asistencia:', text);
-        throw new Error(text || 'No se pudo registrar la asistencia.');
+        const text = await res.text()
+        console.error('Error body en crear asistencia:', text)
+        throw new Error(text || 'No se pudo registrar la asistencia.')
       }
 
-      alert('Asistencia registrada correctamente.');
-      handleReset();
-      fetchAsistencias(); // recargar listado
+      alert('Asistencia registrada correctamente.')
+      handleReset()
+      fetchAsistencias()
     } catch (err) {
-      console.error(err);
-      alert('Ocurrió un problema al registrar la asistencia.');
+      console.error(err)
+      alert('Ocurrió un problema al registrar la asistencia.')
     } finally {
-      setSubmitting(false);
+      setSubmitting(false)
     }
-  };
-
-
-
-
+  }
 
   // ---------- ELIMINAR ASISTENCIA ----------
   const handleDelete = async (id) => {
@@ -307,6 +316,91 @@ const AsistenciaCaninos = () => {
       alert('Ocurrió un problema al borrar la asistencia.')
     } finally {
       setDeletingId(null)
+    }
+  }
+
+  // abrir/cerrar modal de salida
+  const openSalidaModal = (asistencia) => {
+    setAsistenciaSeleccionada(asistencia)
+    setSalidaForm({
+      salidaAnticipada: false,
+      tipoSalida: '',
+      observaciones: '',
+    })
+    setSalidaValidated(false)
+    setSalidaModalVisible(true)
+  }
+
+  const closeSalidaModal = () => {
+    setSalidaModalVisible(false)
+    setAsistenciaSeleccionada(null)
+  }
+
+  // manejo del formulario de salida
+  const handleSalidaChange = (e) => {
+    const { name, value, checked, type } = e.target
+    setSalidaForm((prev) => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value,
+    }))
+  }
+
+  const handleRegistrarSalida = async (e) => {
+    e.preventDefault()
+    setSalidaValidated(true)
+
+    if (!salidaForm.tipoSalida) {
+      return
+    }
+
+    try {
+      setSalidaSubmitting(true)
+      const accessToken = getAccessToken()
+      if (!accessToken) {
+        alert('No hay sesión iniciada.')
+        return
+      }
+
+      if (!asistenciaSeleccionada?.id) {
+        alert('No se encontró la asistencia seleccionada.')
+        return
+      }
+
+      // 👉 endpoint de ejemplo, el backend debe implementarlo
+      const url = `${import.meta.env.VITE_API_BASE}/asistencias/registrar_salida/`
+
+      const payload = {
+        id_asistencia: asistenciaSeleccionada.id,
+        salida_anticipada: salidaForm.salidaAnticipada,
+        tipo_salida: salidaForm.tipoSalida, // 'Ruta' o 'Propietario'
+        observaciones: salidaForm.observaciones.trim() || null, // opcional
+      }
+
+      console.log('POST registrar salida ->', url, payload)
+
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      })
+
+      if (!res.ok) {
+        const text = await res.text()
+        console.error('Error body en registrar salida:', text)
+        throw new Error(text || 'No se pudo registrar la salida.')
+      }
+
+      alert('Salida registrada correctamente.')
+      closeSalidaModal()
+      fetchAsistencias() // refrescar listado de presentes
+    } catch (err) {
+      console.error(err)
+      alert('Ocurrió un problema al registrar la salida.')
+    } finally {
+      setSalidaSubmitting(false)
     }
   }
 
@@ -398,8 +492,8 @@ const AsistenciaCaninos = () => {
                 </div>
               </CCol>
 
-              {/* Llegó en ruta */}
-              <CCol md={1.5}>
+              {/* Llegó en ruta / propietario */}
+              <CCol md={3}>
                 <div className="mb-3">
                   <CInputGroup hasValidation>
                     <CInputGroupText>
@@ -415,13 +509,11 @@ const AsistenciaCaninos = () => {
                       <option value="Ruta">Ruta</option>
                       <option value="Propietario">Propietario</option>
                     </CFormSelect>
-                                          
+
                     <CFormFeedback invalid>Selecciona una opción.</CFormFeedback>
                   </CInputGroup>
                 </div>
               </CCol>
-
-             
             </CRow>
 
             <div className="d-grid d-sm-flex gap-2">
@@ -486,12 +578,24 @@ const AsistenciaCaninos = () => {
                     <CTableDataCell>{a.llego_duenio ? 'Sí' : 'No'}</CTableDataCell>
                     <CTableDataCell>{a.hora_ingreso || a.created_at || '—'}</CTableDataCell>
                     <CTableDataCell className="text-end">
+                      
+                      <CButton
+                        color="success"
+                        size="sm"
+                        variant="outline"
+                        className="me-2"
+                        onClick={() => openSalidaModal(a)}
+                        disabled={deletingId === a.id || submitting || salidaSubmitting}
+                      >
+                        Clase terminada
+                      </CButton>
+
                       <CButton
                         color="danger"
                         size="sm"
                         variant="outline"
                         onClick={() => handleDelete(a.id)}
-                        disabled={deletingId === a.id || submitting}
+                        disabled={deletingId === a.id || submitting || salidaSubmitting}
                       >
                         {deletingId === a.id ? 'Eliminando…' : 'Borrar'}
                       </CButton>
@@ -503,6 +607,75 @@ const AsistenciaCaninos = () => {
           )}
         </CCardBody>
       </CCard>
+
+      <CModal visible={salidaModalVisible} onClose={closeSalidaModal}>
+        <CForm noValidate validated={salidaValidated} onSubmit={handleRegistrarSalida}>
+          <CModalHeader closeButton>
+            <CModalTitle>Registrar fin de clase</CModalTitle>
+          </CModalHeader>
+          <CModalBody>
+            <p className="mb-3">
+              Canino:{' '}
+              <strong>
+                {asistenciaSeleccionada?.mascota_nombre ||
+                  asistenciaSeleccionada?.canino_nombre ||
+                  '—'}
+              </strong>
+            </p>
+
+            {/* ¿Salida anticipada? */}
+            <div className="mb-3">
+              <CFormCheck
+                type="checkbox"
+                id="salidaAnticipada"
+                label="Salida anticipada"
+                name="salidaAnticipada"
+                checked={salidaForm.salidaAnticipada}
+                onChange={handleSalidaChange}
+              />
+            </div>
+
+            {/* Tipo de salida (ruta / propietario) */}
+            <div className="mb-3">
+              <CInputGroup hasValidation>
+                <CInputGroupText>
+                  <CIcon icon={cilBusAlt} />
+                </CInputGroupText>
+                <CFormSelect
+                  name="tipoSalida"
+                  value={salidaForm.tipoSalida}
+                  onChange={handleSalidaChange}
+                  required
+                >
+                  <option value="">Selecciona tipo de salida</option>
+                  <option value="Ruta">Ruta</option>
+                  <option value="Propietario">Propietario</option>
+                </CFormSelect>
+                <CFormFeedback invalid>Selecciona el tipo de salida.</CFormFeedback>
+              </CInputGroup>
+            </div>
+
+            {/* Observaciones (opcional) */}
+            <div className="mb-3">
+              <CFormTextarea
+                name="observaciones"
+                rows={3}
+                placeholder="Observaciones de la clase (opcional)"
+                value={salidaForm.observaciones}
+                onChange={handleSalidaChange}
+              />
+            </div>
+          </CModalBody>
+          <CModalFooter>
+            <CButton color="secondary" variant="outline" type="button" onClick={closeSalidaModal}>
+              Cancelar
+            </CButton>
+            <CButton color="primary" type="submit" disabled={salidaSubmitting}>
+              {salidaSubmitting ? 'Guardando…' : 'Guardar salida'}
+            </CButton>
+          </CModalFooter>
+        </CForm>
+      </CModal>
     </>
   )
 }
