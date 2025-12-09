@@ -250,7 +250,7 @@ const InternalUsers = () => {
       doc: user.documento || '',
       vinculacion: user.fecha_vinculacion || '',
       email: user.email || '',
-      password: '', // no editamos contraseña aquí
+      password: '', 
       role: user.tipo_usuario || '',
     })
 
