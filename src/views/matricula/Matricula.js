@@ -47,6 +47,8 @@ const MatricularCanino = () => {
   const [editingId, setEditingId] = useState(null) // id de la matrícula que se está editando
   const [deletingId, setDeletingId] = useState(null) // id que se está eliminando
 
+  const [vacunasUrlActual, setVacunasUrlActual] = useState('')
+
   // Utilidad: formatear fecha a YYYY-MM-DD
   const fmt = (d) => {
     const yyyy = d.getFullYear()
@@ -60,6 +62,14 @@ const MatricularCanino = () => {
     cutoff.setMonth(cutoff.getMonth() - 4)
     return fmt(cutoff)
   }, [])
+
+  // ---------- HELPERS ----------
+  // Extrae id de varios posibles nombres que pueda devolver el backend.
+  const getId = (m) =>
+    m?.id ?? m?.id_matricula ?? m?.matricula_id ?? m?.pk ?? m?._id ?? null
+
+  const normalizeList = (list) =>
+    list.map((item) => ({ ...item, id: getId(item) }))
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -131,8 +141,10 @@ const MatricularCanino = () => {
         lista = []
       }
 
-      setMascotas(lista)
-      console.log('Mascotas cargadas:', lista);
+      // Normalizamos: añadimos .id para que el resto del código lo use consistentemente.
+      const normalized = normalizeList(lista)
+      console.log('Mascotas normalizadas:', normalized)
+      setMascotas(normalized)
     } catch (err) {
       console.error('Error en fetchMascotas:', err)
       setErrorMascotas('Ocurrió un error al cargar tus mascotas.')
@@ -150,10 +162,23 @@ const MatricularCanino = () => {
     e.preventDefault()
     setValidated(true)
 
-    // Validaciones mínimas
-    const allFilled = Object.values(form).every((v) => String(v).trim() !== '')
-    if (!allFilled) return
+    // 1️⃣ Validar campos obligatorios REALMENTE obligatorios
+    const requiredFields = [
+      'nombre',
+      'raza',
+      'talla',
+      'plan',
+      'fecha_nacimiento',
+    ]
 
+    for (const field of requiredFields) {
+      if (!form[field] || String(form[field]).trim() === '') {
+        alert(`Debes completar el campo: ${field}`)
+        return
+      }
+    }
+
+    // 2️⃣ Validar nacimiento
     const nErr = validateNacimiento(form.fecha_nacimiento, maxNacimiento)
     setNacimientoError(nErr)
     if (nErr) return
@@ -173,7 +198,7 @@ const MatricularCanino = () => {
         return
       }
 
-      // 1️⃣ Subir PDF SOLO si el usuario seleccionó uno nuevo
+      // 3️⃣ Subir PDF SOLO si hay uno nuevo
       let vacunasUrl = ''
 
       if (vacunasPdf) {
@@ -195,18 +220,22 @@ const MatricularCanino = () => {
         vacunasUrl = urlData.publicUrl
         console.log('PDF subido correctamente:', vacunasUrl)
       } else if (isEditing) {
-        // Si estamos editando y NO se subió un nuevo PDF,
-        // conservamos el que ya tenía la matrícula
-        const actual = mascotas.find((m) => m.id_matricula === editingId)
-        vacunasUrl = actual?.vacunas_url || ''
+        vacunasUrl = vacunasUrlActual // conservar PDF anterior
       }
 
-      // Si estamos creando y no hay vacunasUrl, obligamos PDF
+      console.log('DEBUG → isEditing:', isEditing)
+      console.log('DEBUG → editingId:', editingId)
+      console.log('DEBUG → vacunasPdf:', vacunasPdf)
+      console.log('DEBUG → vacunasUrl:', vacunasUrl)
+      console.log('DEBUG → vacunasUrlActual:', vacunasUrlActual)
+
+      // 4️⃣ Validación del PDF solo al crear
       if (!isEditing && !vacunasUrl) {
         alert('Adjunta el carné de vacunación en PDF.')
         return
       }
 
+      // 5️⃣ Crear FormData y enviar
       const fd = new FormData()
       fd.append('nombre', form.nombre)
       fd.append('raza', form.raza)
@@ -214,12 +243,9 @@ const MatricularCanino = () => {
       fd.append('fecha_nacimiento', form.fecha_nacimiento)
       fd.append('plan', form.plan)
       fd.append('transporte', form.transporte)
-      if (vacunasUrl) {
-        fd.append('vacunas_url', vacunasUrl)
-      }
+      fd.append('vacunas_url', vacunasUrl)
 
       const baseUrl = `${import.meta.env.VITE_API_BASE}/matriculas/`
-
       const url = isEditing ? `${baseUrl}${editingId}/` : baseUrl
       const method = isEditing ? 'PUT' : 'POST'
 
@@ -265,6 +291,7 @@ const MatricularCanino = () => {
       talla: '',
     })
     setVacunasPdf(null)
+    setVacunasUrlActual('')
     setNacimientoError('')
     setValidated(false)
     setEditingId(null)
@@ -277,7 +304,7 @@ const MatricularCanino = () => {
 
     try {
       setDeletingId(id)
-      console.log("ID matrícula a eliminar:", id);
+
       const accessToken =
         localStorage.getItem('access') ||
         localStorage.getItem('accessToken') ||
@@ -298,15 +325,14 @@ const MatricularCanino = () => {
         },
       })
 
-      const text = await res.text()
-
-      if (!res.ok && res.status < 200 || res.status >= 300) {
+      if (!res.ok) {
+        const text = await res.text()
         console.error('Error body DELETE matrícula:', text)
         throw new Error(text || 'No se pudo eliminar la matrícula.')
       }
 
       // Quitamos la matrícula de la tabla en memoria
-      setMascotas((prev) => prev.filter((m) => m.id_matricula !== id))
+      setMascotas((prev) => prev.filter((m) => m.id !== id))
       alert('Matrícula eliminada correctamente.')
     } catch (err) {
       console.error(err)
@@ -318,19 +344,25 @@ const MatricularCanino = () => {
 
   // -------- INICIAR EDICIÓN DESDE LA TABLA --------
   const startEdit = (m) => {
-    setEditingId(m.id_matricula)
+    const id = getId(m)
+    if (!id) {
+      console.warn('startEdit: no se pudo determinar un id para la fila', m)
+    }
+    setEditingId(id)
     setForm({
       plan: m.plan || '',
       transporte: m.transporte || '',
       nombre: m.nombre || '',
       raza: m.raza || '',
-      nacimiento: m.fecha_nacimiento || '',
+      fecha_nacimiento: m.fecha_nacimiento || '',
       talla: m.talla || '',
     })
     setVacunasPdf(null)
+    setVacunasUrlActual(m.vacunas_url || '')
     setNacimientoError('')
     setValidated(false)
     window.scrollTo({ top: 0, behavior: 'smooth' })
+    console.log('startEdit -> editingId set to:', id)
   }
 
   // Mensaje de error para el PDF (solo para alta; en edición puede ser opcional)
@@ -347,16 +379,14 @@ const MatricularCanino = () => {
   return (
     <>
       <CCard className="mb-4">
-        <CCardHeader>
-          {isEditing ? 'Editar Matrícula' : 'Matricular Mascota'}
-        </CCardHeader>
+        <CCardHeader>{isEditing ? 'Editar Matrícula' : 'Matricular Mascota'}</CCardHeader>
         <CCardBody>
           <CForm noValidate validated={validated} onSubmit={handleSubmit}>
             <CRow>
               <CCol md={6}>
                 {/* Plan de matrícula */}
                 <div className="mb-3">
-                  <CInputGroup>
+                  <CInputGroup hasValidation>
                     <CInputGroupText>
                       <CIcon icon={cilBadge} />
                     </CInputGroupText>
@@ -377,7 +407,7 @@ const MatricularCanino = () => {
               <CCol md={6}>
                 {/* Plan de transporte */}
                 <div className="mb-3">
-                  <CInputGroup>
+                  <CInputGroup hasValidation>
                     <CInputGroupText>
                       <CIcon icon={cilBusAlt} />
                     </CInputGroupText>
@@ -402,7 +432,7 @@ const MatricularCanino = () => {
               <CCol md={6}>
                 {/* Nombre del canino */}
                 <div className="mb-3">
-                  <CInputGroup>
+                  <CInputGroup hasValidation>
                     <CInputGroupText>
                       <CIcon icon={cilUser} />
                     </CInputGroupText>
@@ -422,7 +452,7 @@ const MatricularCanino = () => {
               <CCol md={6}>
                 {/* Raza */}
                 <div className="mb-3">
-                  <CInputGroup>
+                  <CInputGroup hasValidation>
                     <CInputGroupText>
                       <CIcon icon={cilUser} />
                     </CInputGroupText>
@@ -444,7 +474,7 @@ const MatricularCanino = () => {
               <CCol md={6}>
                 {/* Fecha de nacimiento */}
                 <div className="mb-3">
-                  <CInputGroup>
+                  <CInputGroup hasValidation>
                     <CInputGroupText>
                       <CIcon icon={cilBirthdayCake} />
                     </CInputGroupText>
@@ -456,9 +486,7 @@ const MatricularCanino = () => {
                       max={maxNacimiento}
                       required
                     />
-                    <CFormFeedback invalid>
-                      {nacimientoError || 'Campo obligatorio.'}
-                    </CFormFeedback>
+                    <CFormFeedback invalid>{nacimientoError || 'Campo obligatorio.'}</CFormFeedback>
                   </CInputGroup>
                 </div>
               </CCol>
@@ -466,7 +494,7 @@ const MatricularCanino = () => {
               <CCol md={6}>
                 {/* Talla */}
                 <div className="mb-3">
-                  <CInputGroup>
+                  <CInputGroup hasValidation>
                     <CInputGroupText>
                       <CIcon icon={cilBadge} />
                     </CInputGroupText>
@@ -487,19 +515,26 @@ const MatricularCanino = () => {
             <CRow>
               <CCol md={12}>
                 <div className="mb-3">
-                  <CInputGroup>
+                  <CInputGroup hasValidation>
                     <CInputGroupText>PDF carné vacunación</CInputGroupText>
+
                     <CFormInput
                       type="file"
                       name="vacunas_pdf"
                       accept="application/pdf"
                       onChange={handleFileChange}
                       aria-label="Subir PDF con el carné de vacunación"
+                      required={!editingId}
+                      invalid={Boolean(pdfError)}
                     />
-                    <CFormFeedback invalid>
-                      {pdfError || 'Adjunta el PDF del carné de vacunación.'}
-                    </CFormFeedback>
+
+                    {pdfError && (
+                      <CFormFeedback invalid>
+                        {pdfError}
+                      </CFormFeedback>
+                    )}
                   </CInputGroup>
+
                   {vacunasPdf && (
                     <small className="text-body-secondary d-block mt-1">
                       Archivo: {vacunasPdf.name} ({(vacunasPdf.size / 1024 / 1024).toFixed(2)} MB)
@@ -516,19 +551,9 @@ const MatricularCanino = () => {
 
             <div className="d-grid d-sm-flex gap-2">
               <CButton color="primary" type="submit" disabled={submitting}>
-                {submitting
-                  ? 'Guardando…'
-                  : isEditing
-                  ? 'Guardar cambios'
-                  : 'Confirmar la matrícula'}
+                {submitting ? 'Guardando…' : isEditing ? 'Guardar cambios' : 'Confirmar la matrícula'}
               </CButton>
-              <CButton
-                color="secondary"
-                variant="outline"
-                type="button"
-                onClick={handleReset}
-                disabled={submitting}
-              >
+              <CButton color="secondary" variant="outline" type="button" onClick={handleReset} disabled={submitting}>
                 {isEditing ? 'Cancelar edición' : 'Limpiar'}
               </CButton>
             </div>
@@ -572,7 +597,7 @@ const MatricularCanino = () => {
               </CTableHead>
               <CTableBody>
                 {mascotas.map((m, idx) => (
-                  <CTableRow key={m.id_matricula ?? idx}>
+                  <CTableRow key={m.id ?? idx}>
                     <CTableDataCell>{idx + 1}</CTableDataCell>
                     <CTableDataCell>{m.nombre}</CTableDataCell>
                     <CTableDataCell>{m.raza}</CTableDataCell>
@@ -596,7 +621,7 @@ const MatricularCanino = () => {
                         variant="outline"
                         className="me-2"
                         onClick={() => startEdit(m)}
-                        disabled={deletingId === m.id_matricula || submitting}
+                        disabled={deletingId === m.id || submitting}
                       >
                         Editar
                       </CButton>
@@ -604,10 +629,10 @@ const MatricularCanino = () => {
                         color="danger"
                         size="sm"
                         variant="outline"
-                        onClick={() => handleDelete(m.id_matricula)}
-                        disabled={deletingId === m.id_matricula || submitting}
+                        onClick={() => handleDelete(m.id)}
+                        disabled={deletingId === m.id || submitting}
                       >
-                        {deletingId === m.id_matricula ? 'Eliminando…' : 'Eliminar'}
+                        {deletingId === m.id ? 'Eliminando…' : 'Eliminar'}
                       </CButton>
                     </CTableDataCell>
                   </CTableRow>
