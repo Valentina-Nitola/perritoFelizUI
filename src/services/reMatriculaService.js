@@ -1,75 +1,97 @@
-// src/services/matriculasService.js
-// ⚠️ IMPORTANTE:
-// Este archivo está listo para que el backend conecte después.
-// Por ahora usa datos MOCK para que el front funcione visualmente.
+// src/services/reMatriculasService.js
+// YA SIN MOCKS — usa el backend verdadero
 
-// Cuando el backend esté listo, descomentas el import de apiClient
-// y las llamadas con axios que están como ejemplo.
+const API_BASE = import.meta.env.VITE_API_BASE
 
-// import apiClient from './apiClient' // <-- ejemplo, según tu proyecto
+// -------------------------------------------
+// Obtener token del localStorage
+// -------------------------------------------
+const getToken = () =>
+  localStorage.getItem('access') ||
+  localStorage.getItem('accessToken') ||
+  localStorage.getItem('token')
 
-// ===== MOCKS TEMPORALES =====
-const MOCK_MATRICULAS = [
-  {
-    id: 1,
-    nombreCanino: 'Firulais',
-    raza: 'Labrador',
-    tamano: 'Grande',
-    plan: 'Mensual',
-    fechaInicio: '2025-01-01',
-    fechaFin: '2025-03-01',
-    estado: 'Activo',
-  },
-  {
-    id: 2,
-    nombreCanino: 'Rocky',
-    raza: 'Poodle',
-    tamano: 'Pequeño',
-    plan: 'Trimestral',
-    fechaInicio: '2025-02-01',
-    fechaFin: '2025-08-01',
-    estado: 'Activo',
-  },
-  {
-    id: 3,
-    nombreCanino: 'Luna',
-    raza: 'Pastor Alemán',
-    tamano: 'Grande',
-    plan: 'Anual',
-    fechaInicio: '2025-01-15',
-    fechaFin: '2026-01-15',
-    estado: 'Vencido',
-  },
-]
+// -------------------------------------------
+// Función para transformar la respuesta REAL
+// -------------------------------------------
+const mapMatricula = (m) => {
+  return {
+    id: m.id_matricula,
+    idCanino: m.id_canino,
 
-// ===== SERVICIOS =====
+    // datos aplanados del serializer
+    nombreCanino: m.nombre || '',
+    raza: m.raza || '',
+    tamano: m.talla || '',
 
-// Listar matrículas
+    plan: m.plan || '',
+    fechaInicio: m.fecha_inicio || '',
+    fechaFin: m.fecha_fin || '',
+    estado: m.estado || '',
+  }
+}
+
+
+// -------------------------------------------
+// LISTAR MATRÍCULAS desde /matriculas/listado-global/
+// -------------------------------------------
 export const listarMatriculas = async () => {
-  // Ejemplo REAL (cuando haya backend):
-  // const response = await apiClient.get('/matriculas')
-  // return response.data
+  const token = getToken()
+  if (!token) throw new Error('No hay sesión iniciada.')
 
-  // MOCK mientras tanto:
-  return Promise.resolve(MOCK_MATRICULAS)
+  const url = `${API_BASE}/matriculas/listado-global/`
+
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+
+  if (!res.ok) {
+    const err = await res.text()
+    console.error('Error listarMatriculas:', err)
+    throw new Error('Error consultando matrículas')
+  }
+
+  const data = await res.json()
+
+  // transformar todas las matrículas
+  return Array.isArray(data) ? data.map(mapMatricula) : []
 }
 
-// Actualizar matrícula
-export const actualizarMatricula = async (idMatricula, data) => {
-  // Ejemplo REAL:
-  // const response = await apiClient.put(`/matriculas/${idMatricula}`, data)
-  // return response.data
+// -------------------------------------------
+// ACTUALIZAR MATRÍCULA
+// -------------------------------------------
+export const actualizarMatricula = async (idMatricula, payload) => {
+  const token = getToken()
+  const url = `${API_BASE}/matriculas/${idMatricula}/`
 
-  console.log('Mock actualizar matrícula', idMatricula, data)
-  // devolvemos lo que enviamos, con el id
-  return Promise.resolve({ ...data, id: idMatricula })
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  })
+
+  if (!res.ok) throw new Error('Error actualizando matrícula')
+
+  const data = await res.json()
+  return mapMatricula(data)
 }
 
-// Eliminar / desactivar matrícula
+// -------------------------------------------
+// ELIMINAR MATRÍCULA
+// -------------------------------------------
 export const eliminarMatricula = async (idMatricula) => {
-  // Ejemplo REAL:
-  // await apiClient.delete(`/matriculas/${idMatricula}`)
+  const token = getToken()
+  const url = `${API_BASE}/matriculas/${idMatricula}/`
 
-  console.log('Mock eliminar matrícula', idMatricula)
-  return Promise.resolve({ success: true })
+  const res = await fetch(url, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  })
+
+  if (!res.ok) throw new Error('Error eliminando matrícula')
+
+  return { success: true }
 }

@@ -26,13 +26,7 @@ import {
   CAlert,
 } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
-import {
-  cilPencil,
-  cilTrash,
-  cilSearch,
-  cilFilter,
-  cilReload,
-} from '@coreui/icons'
+import { cilPencil, cilTrash, cilSearch, cilFilter, cilReload } from '@coreui/icons'
 
 import {
   listarMatriculas,
@@ -78,6 +72,7 @@ const ListadoMatriculas = () => {
     try {
       setCargando(true)
       setError(null)
+
       const data = await listarMatriculas()
       setMatriculas(data || [])
     } catch (err) {
@@ -107,18 +102,10 @@ const ListadoMatriculas = () => {
 
   const matriculasFiltradas = useMemo(() => {
     return matriculas.filter((m) => {
-      const {
-        tamano,
-        raza,
-        plan,
-        estado,
-        fechaDesde,
-        fechaHasta,
-      } = filtros
+      const { tamano, raza, plan, estado, fechaDesde, fechaHasta } = filtros
 
       const textoBusqueda = busqueda.trim().toLowerCase()
 
-      // BÚSQUEDA LIBRE
       if (textoBusqueda) {
         const nombre = (m.nombreCanino || '').toLowerCase()
         const razaM = (m.raza || '').toLowerCase()
@@ -126,36 +113,34 @@ const ListadoMatriculas = () => {
         const tamanoM = (m.tamano || '').toLowerCase()
         const estadoM = (m.estado || '').toLowerCase()
 
-        const coincideBusqueda =
+        const coincide =
           nombre.includes(textoBusqueda) ||
           razaM.includes(textoBusqueda) ||
           planM.includes(textoBusqueda) ||
           tamanoM.includes(textoBusqueda) ||
           estadoM.includes(textoBusqueda)
 
-        if (!coincideBusqueda) return false
+        if (!coincide) return false
       }
 
-      // SELECTS
       if (tamano && m.tamano !== tamano) return false
       if (raza && m.raza !== raza) return false
       if (plan && m.plan !== plan) return false
       if (estado && m.estado !== estado) return false
 
-      // RANGO DE FECHAS (usamos fechaInicio)
       if (fechaDesde || fechaHasta) {
-        const fechaRef = m.fechaInicio ? new Date(m.fechaInicio) : null
-        if (!fechaRef || Number.isNaN(fechaRef.getTime())) return false
+        const fecha = m.fechaInicio ? new Date(m.fechaInicio) : null
+        if (!fecha || Number.isNaN(fecha.getTime())) return false
 
         if (fechaDesde) {
           const desde = new Date(fechaDesde)
-          if (fechaRef < desde) return false
+          if (fecha < desde) return false
         }
 
         if (fechaHasta) {
           const hasta = new Date(fechaHasta)
           hasta.setHours(23, 59, 59, 999)
-          if (fechaRef > hasta) return false
+          if (fecha > hasta) return false
         }
       }
 
@@ -163,7 +148,6 @@ const ListadoMatriculas = () => {
     })
   }, [matriculas, filtros, busqueda])
 
-  // Para llenar selects dinámicamente
   const opcionesTamano = useMemo(
     () => Array.from(new Set(matriculas.map((m) => m.tamano))).filter(Boolean),
     [matriculas],
@@ -186,15 +170,9 @@ const ListadoMatriculas = () => {
 
   const renderBadgeEstado = (estado) => {
     if (!estado) return '-'
-    if (estado.toUpperCase() === 'ACTIVO') {
-      return <span className="badge bg-success">Activo</span>
-    }
-    if (estado.toUpperCase() === 'VENCIDO') {
-      return <span className="badge bg-warning text-dark">Vencido</span>
-    }
-    if (estado.toUpperCase() === 'CANCELADO') {
-      return <span className="badge bg-secondary">Cancelado</span>
-    }
+    if (estado.toUpperCase() === 'ACTIVO') return <span className="badge bg-success">Activo</span>
+    if (estado.toUpperCase() === 'VENCIDO') return <span className="badge bg-warning text-dark">Vencido</span>
+    if (estado.toUpperCase() === 'CANCELADO') return <span className="badge bg-secondary">Cancelado</span>
     return <span className="badge bg-light text-dark">{estado}</span>
   }
 
@@ -220,12 +198,12 @@ const ListadoMatriculas = () => {
 
     try {
       setCargando(true)
+
       const actualizada = await actualizarMatricula(matriculaSeleccionada.id, {
         ...matriculaSeleccionada,
         ...formEditar,
       })
 
-      // Actualizamos en el estado local
       setMatriculas((prev) =>
         prev.map((m) => (m.id === actualizada.id ? actualizada : m)),
       )
@@ -248,12 +226,16 @@ const ListadoMatriculas = () => {
 
   const confirmarEliminar = async () => {
     if (!matriculaAEliminar) return
+
     try {
       setCargando(true)
+
       await eliminarMatricula(matriculaAEliminar.id)
+
       setMatriculas((prev) =>
         prev.filter((m) => m.id !== matriculaAEliminar.id),
       )
+
       setMostrarModalEliminar(false)
       setMatriculaAEliminar(null)
     } catch (err) {
@@ -273,10 +255,10 @@ const ListadoMatriculas = () => {
             <div>
               <h5 className="mb-0">Reporte de caninos matriculados</h5>
               <small className="text-medium-emphasis">
-                Consulta, filtra y administra las matrículas de los caninos en la
-                escuela.
+                Consulta, filtra y administra las matrículas de los caninos en la escuela.
               </small>
             </div>
+
             <div className="text-end">
               <div className="fw-bold">Total: {matriculas.length}</div>
               <div className="text-medium-emphasis">
@@ -292,7 +274,7 @@ const ListadoMatriculas = () => {
               </CAlert>
             )}
 
-            {/* Búsqueda + acciones */}
+            {/* BUSQUEDA */}
             <CForm className="mb-3">
               <CRow className="align-items-end">
                 <CCol md={6} className="mb-2">
@@ -318,6 +300,7 @@ const ListadoMatriculas = () => {
                     <CIcon icon={cilFilter} className="me-1" />
                     Limpiar filtros
                   </CButton>
+
                   <CButton
                     color="primary"
                     variant="outline"
@@ -329,21 +312,17 @@ const ListadoMatriculas = () => {
                 </CCol>
               </CRow>
 
-              {/* Filtros */}
+              {/* FILTROS */}
               <CRow className="mt-3">
                 <CCol md={3} className="mb-2">
                   <label className="form-label">Tamaño</label>
                   <CFormSelect
                     value={filtros.tamano}
-                    onChange={(e) =>
-                      handleCambioFiltro('tamano', e.target.value)
-                    }
+                    onChange={(e) => handleCambioFiltro('tamano', e.target.value)}
                   >
                     <option value="">Todos</option>
                     {opcionesTamano.map((t) => (
-                      <option key={t} value={t}>
-                        {t}
-                      </option>
+                      <option key={t}>{t}</option>
                     ))}
                   </CFormSelect>
                 </CCol>
@@ -356,24 +335,20 @@ const ListadoMatriculas = () => {
                   >
                     <option value="">Todas</option>
                     {opcionesRaza.map((r) => (
-                      <option key={r} value={r}>
-                        {r}
-                      </option>
+                      <option key={r}>{r}</option>
                     ))}
                   </CFormSelect>
                 </CCol>
 
                 <CCol md={3} className="mb-2">
-                  <label className="form-label">Plan de matrícula</label>
+                  <label className="form-label">Plan</label>
                   <CFormSelect
                     value={filtros.plan}
                     onChange={(e) => handleCambioFiltro('plan', e.target.value)}
                   >
                     <option value="">Todos</option>
                     {opcionesPlan.map((p) => (
-                      <option key={p} value={p}>
-                        {p}
-                      </option>
+                      <option key={p}>{p}</option>
                     ))}
                   </CFormSelect>
                 </CCol>
@@ -382,9 +357,7 @@ const ListadoMatriculas = () => {
                   <label className="form-label">Estado</label>
                   <CFormSelect
                     value={filtros.estado}
-                    onChange={(e) =>
-                      handleCambioFiltro('estado', e.target.value)
-                    }
+                    onChange={(e) => handleCambioFiltro('estado', e.target.value)}
                   >
                     <option value="">Todos</option>
                     <option value="ACTIVO">Activo</option>
@@ -400,25 +373,22 @@ const ListadoMatriculas = () => {
                   <CFormInput
                     type="date"
                     value={filtros.fechaDesde}
-                    onChange={(e) =>
-                      handleCambioFiltro('fechaDesde', e.target.value)
-                    }
+                    onChange={(e) => handleCambioFiltro('fechaDesde', e.target.value)}
                   />
                 </CCol>
+
                 <CCol md={3} className="mb-2">
                   <label className="form-label">Fecha inicio hasta</label>
                   <CFormInput
                     type="date"
                     value={filtros.fechaHasta}
-                    onChange={(e) =>
-                      handleCambioFiltro('fechaHasta', e.target.value)
-                    }
+                    onChange={(e) => handleCambioFiltro('fechaHasta', e.target.value)}
                   />
                 </CCol>
               </CRow>
             </CForm>
 
-            {/* Tabla */}
+            {/* TABLA */}
             {cargando ? (
               <div className="text-center my-4">
                 <CSpinner />
@@ -435,17 +405,15 @@ const ListadoMatriculas = () => {
                     <CTableHeaderCell>Fecha inicio</CTableHeaderCell>
                     <CTableHeaderCell>Fecha fin</CTableHeaderCell>
                     <CTableHeaderCell>Estado</CTableHeaderCell>
-                    <CTableHeaderCell className="text-center">
-                      Acciones
-                    </CTableHeaderCell>
+                    <CTableHeaderCell className="text-center">Acciones</CTableHeaderCell>
                   </CTableRow>
                 </CTableHead>
+
                 <CTableBody>
                   {matriculasFiltradas.length === 0 ? (
                     <CTableRow>
                       <CTableDataCell colSpan={9} className="text-center">
-                        No se encontraron matrículas con los criterios
-                        seleccionados.
+                        No se encontraron matrículas.
                       </CTableDataCell>
                     </CTableRow>
                   ) : (
@@ -456,30 +424,24 @@ const ListadoMatriculas = () => {
                         <CTableDataCell>{m.raza}</CTableDataCell>
                         <CTableDataCell>{m.tamano}</CTableDataCell>
                         <CTableDataCell>{m.plan}</CTableDataCell>
-                        <CTableDataCell>
-                          {formatearFecha(m.fechaInicio)}
-                        </CTableDataCell>
-                        <CTableDataCell>
-                          {formatearFecha(m.fechaFin)}
-                        </CTableDataCell>
-                        <CTableDataCell>
-                          {renderBadgeEstado(m.estado)}
-                        </CTableDataCell>
+                        <CTableDataCell>{formatearFecha(m.fechaInicio)}</CTableDataCell>
+                        <CTableDataCell>{formatearFecha(m.fechaFin)}</CTableDataCell>
+                        <CTableDataCell>{renderBadgeEstado(m.estado)}</CTableDataCell>
+
                         <CTableDataCell className="text-center">
                           <CButton
                             color="warning"
                             size="sm"
                             className="me-2"
                             onClick={() => abrirModalEditar(m)}
-                            title="Editar matrícula"
                           >
                             <CIcon icon={cilPencil} />
                           </CButton>
+
                           <CButton
                             color="danger"
                             size="sm"
                             onClick={() => abrirModalEliminar(m)}
-                            title="Eliminar matrícula"
                           >
                             <CIcon icon={cilTrash} />
                           </CButton>
@@ -495,18 +457,15 @@ const ListadoMatriculas = () => {
       </CCol>
 
       {/* MODAL EDITAR */}
-      <CModal
-        visible={mostrarModalEditar}
-        onClose={() => setMostrarModalEditar(false)}
-      >
+      <CModal visible={mostrarModalEditar} onClose={() => setMostrarModalEditar(false)}>
         <CModalHeader closeButton>
           <CModalTitle>Editar matrícula</CModalTitle>
         </CModalHeader>
+
         <CForm onSubmit={guardarCambiosEditar}>
           <CModalBody>
             <p>
-              Canino:{' '}
-              <strong>{matriculaSeleccionada?.nombreCanino || ''}</strong>
+              Canino: <strong>{matriculaSeleccionada?.nombreCanino}</strong>
             </p>
 
             <CRow className="mb-3">
@@ -526,20 +485,17 @@ const ListadoMatriculas = () => {
                   type="date"
                   label="Fecha inicio"
                   value={formEditar.fechaInicio}
-                  onChange={(e) =>
-                    handleChangeEditar('fechaInicio', e.target.value)
-                  }
+                  onChange={(e) => handleChangeEditar('fechaInicio', e.target.value)}
                   required
                 />
               </CCol>
+
               <CCol md={6}>
                 <CFormInput
                   type="date"
                   label="Fecha fin"
                   value={formEditar.fechaFin}
-                  onChange={(e) =>
-                    handleChangeEditar('fechaFin', e.target.value)
-                  }
+                  onChange={(e) => handleChangeEditar('fechaFin', e.target.value)}
                   required
                 />
               </CCol>
@@ -550,21 +506,16 @@ const ListadoMatriculas = () => {
                 <CFormInput
                   label="Estado"
                   value={formEditar.estado}
-                  onChange={(e) =>
-                    handleChangeEditar('estado', e.target.value)
-                  }
+                  onChange={(e) => handleChangeEditar('estado', e.target.value)}
                   placeholder="Activo / Vencido / Cancelado"
                   required
                 />
               </CCol>
             </CRow>
           </CModalBody>
+
           <CModalFooter>
-            <CButton
-              color="secondary"
-              variant="outline"
-              onClick={() => setMostrarModalEditar(false)}
-            >
+            <CButton color="secondary" variant="outline" onClick={() => setMostrarModalEditar(false)}>
               Cancelar
             </CButton>
             <CButton color="primary" type="submit">
@@ -575,25 +526,21 @@ const ListadoMatriculas = () => {
       </CModal>
 
       {/* MODAL ELIMINAR */}
-      <CModal
-        visible={mostrarModalEliminar}
-        onClose={() => setMostrarModalEliminar(false)}
-      >
+      <CModal visible={mostrarModalEliminar} onClose={() => setMostrarModalEliminar(false)}>
         <CModalHeader closeButton>
           <CModalTitle>Eliminar matrícula</CModalTitle>
         </CModalHeader>
+
         <CModalBody>
-          ¿Seguro que quieres eliminar la matrícula del canino{' '}
+          ¿Seguro que deseas eliminar la matrícula del canino{' '}
           <strong>{matriculaAEliminar?.nombreCanino}</strong>?
         </CModalBody>
+
         <CModalFooter>
-          <CButton
-            color="secondary"
-            variant="outline"
-            onClick={() => setMostrarModalEliminar(false)}
-          >
+          <CButton color="secondary" variant="outline" onClick={() => setMostrarModalEliminar(false)}>
             Cancelar
           </CButton>
+
           <CButton color="danger" onClick={confirmarEliminar}>
             Eliminar
           </CButton>
