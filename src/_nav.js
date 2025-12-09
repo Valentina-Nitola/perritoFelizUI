@@ -49,7 +49,7 @@ const _nav = [
     name: 'Usuario Interno',
     to: '/user_int',
     anyOf: ['user_int:ver'],
-    icon: <CIcon icon={cilUser} customClassName="nav-icon" />,
+    icon: <CIcon icon={cilUserPlus} customClassName="nav-icon" />,
   },
   {
     component: CNavItem,
@@ -78,6 +78,14 @@ const _nav = [
     to: '/rematricula',
     anyOf: ['rematricula:ver'],
     icon: <CIcon icon={cilDog} customClassName="nav-icon" />,
+  },
+
+  {
+    component: CNavItem,
+    name: 'Clientes',
+    to: '/clientes',
+    anyOf: ['clientes:ver'],
+    icon: <CIcon icon={cilUser} customClassName="nav-icon" />,
   },
 
 ]

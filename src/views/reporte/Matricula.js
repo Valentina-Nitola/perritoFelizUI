@@ -5,6 +5,10 @@ import {
   CCard,
   CCardHeader,
   CCardBody,
+  CForm,
+  CInputGroup,
+  CInputGroupText,
+  CFormInput,
   CFormSelect,
   CButton,
   CTable,
@@ -19,11 +23,16 @@ import {
   CModalTitle,
   CModalBody,
   CModalFooter,
-  CForm,
-  CFormInput,
+  CAlert,
 } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
-import { cilPencil, cilTrash } from '@coreui/icons'
+import {
+  cilPencil,
+  cilTrash,
+  cilSearch,
+  cilFilter,
+  cilReload,
+} from '@coreui/icons'
 
 import {
   listarMatriculas,
@@ -36,10 +45,14 @@ const ListadoMatriculas = () => {
   const [cargando, setCargando] = useState(false)
   const [error, setError] = useState(null)
 
+  const [busqueda, setBusqueda] = useState('')
   const [filtros, setFiltros] = useState({
     tamano: '',
     raza: '',
     plan: '',
+    estado: '',
+    fechaDesde: '',
+    fechaHasta: '',
   })
 
   // Modal editar
@@ -66,7 +79,7 @@ const ListadoMatriculas = () => {
       setCargando(true)
       setError(null)
       const data = await listarMatriculas()
-      setMatriculas(data)
+      setMatriculas(data || [])
     } catch (err) {
       console.error(err)
       setError('No se pudieron cargar las matrículas.')
@@ -80,32 +93,110 @@ const ListadoMatriculas = () => {
     setFiltros((prev) => ({ ...prev, [campo]: valor }))
   }
 
+  const limpiarFiltros = () => {
+    setFiltros({
+      tamano: '',
+      raza: '',
+      plan: '',
+      estado: '',
+      fechaDesde: '',
+      fechaHasta: '',
+    })
+    setBusqueda('')
+  }
+
   const matriculasFiltradas = useMemo(() => {
     return matriculas.filter((m) => {
-      const coincideTamano = filtros.tamano ? m.tamano === filtros.tamano : true
-      const coincideRaza = filtros.raza ? m.raza === filtros.raza : true
-      const coincidePlan = filtros.plan ? m.plan === filtros.plan : true
-      return coincideTamano && coincideRaza && coincidePlan
-    })
-  }, [matriculas, filtros])
+      const {
+        tamano,
+        raza,
+        plan,
+        estado,
+        fechaDesde,
+        fechaHasta,
+      } = filtros
 
-  const limpiarFiltros = () => {
-    setFiltros({ tamano: '', raza: '', plan: '' })
-  }
+      const textoBusqueda = busqueda.trim().toLowerCase()
+
+      // BÚSQUEDA LIBRE
+      if (textoBusqueda) {
+        const nombre = (m.nombreCanino || '').toLowerCase()
+        const razaM = (m.raza || '').toLowerCase()
+        const planM = (m.plan || '').toLowerCase()
+        const tamanoM = (m.tamano || '').toLowerCase()
+        const estadoM = (m.estado || '').toLowerCase()
+
+        const coincideBusqueda =
+          nombre.includes(textoBusqueda) ||
+          razaM.includes(textoBusqueda) ||
+          planM.includes(textoBusqueda) ||
+          tamanoM.includes(textoBusqueda) ||
+          estadoM.includes(textoBusqueda)
+
+        if (!coincideBusqueda) return false
+      }
+
+      // SELECTS
+      if (tamano && m.tamano !== tamano) return false
+      if (raza && m.raza !== raza) return false
+      if (plan && m.plan !== plan) return false
+      if (estado && m.estado !== estado) return false
+
+      // RANGO DE FECHAS (usamos fechaInicio)
+      if (fechaDesde || fechaHasta) {
+        const fechaRef = m.fechaInicio ? new Date(m.fechaInicio) : null
+        if (!fechaRef || Number.isNaN(fechaRef.getTime())) return false
+
+        if (fechaDesde) {
+          const desde = new Date(fechaDesde)
+          if (fechaRef < desde) return false
+        }
+
+        if (fechaHasta) {
+          const hasta = new Date(fechaHasta)
+          hasta.setHours(23, 59, 59, 999)
+          if (fechaRef > hasta) return false
+        }
+      }
+
+      return true
+    })
+  }, [matriculas, filtros, busqueda])
 
   // Para llenar selects dinámicamente
   const opcionesTamano = useMemo(
-    () => Array.from(new Set(matriculas.map((m) => m.tamano))),
+    () => Array.from(new Set(matriculas.map((m) => m.tamano))).filter(Boolean),
     [matriculas],
   )
   const opcionesRaza = useMemo(
-    () => Array.from(new Set(matriculas.map((m) => m.raza))),
+    () => Array.from(new Set(matriculas.map((m) => m.raza))).filter(Boolean),
     [matriculas],
   )
   const opcionesPlan = useMemo(
-    () => Array.from(new Set(matriculas.map((m) => m.plan))),
+    () => Array.from(new Set(matriculas.map((m) => m.plan))).filter(Boolean),
     [matriculas],
   )
+
+  const formatearFecha = (fecha) => {
+    if (!fecha) return '-'
+    const d = new Date(fecha)
+    if (Number.isNaN(d.getTime())) return '-'
+    return d.toLocaleDateString('es-CO')
+  }
+
+  const renderBadgeEstado = (estado) => {
+    if (!estado) return '-'
+    if (estado.toUpperCase() === 'ACTIVO') {
+      return <span className="badge bg-success">Activo</span>
+    }
+    if (estado.toUpperCase() === 'VENCIDO') {
+      return <span className="badge bg-warning text-dark">Vencido</span>
+    }
+    if (estado.toUpperCase() === 'CANCELADO') {
+      return <span className="badge bg-secondary">Cancelado</span>
+    }
+    return <span className="badge bg-light text-dark">{estado}</span>
+  }
 
   // ================= EDITAR =================
   const abrirModalEditar = (matricula) => {
@@ -175,138 +266,233 @@ const ListadoMatriculas = () => {
 
   // ================= RENDER =================
   return (
-    <CCard>
-      <CCardHeader>
-        <strong>Listado de Caninos Matriculados</strong>
-      </CCardHeader>
+    <CRow>
+      <CCol xs={12}>
+        <CCard>
+          <CCardHeader className="d-flex justify-content-between align-items-center">
+            <div>
+              <h5 className="mb-0">Reporte de caninos matriculados</h5>
+              <small className="text-medium-emphasis">
+                Consulta, filtra y administra las matrículas de los caninos en la
+                escuela.
+              </small>
+            </div>
+            <div className="text-end">
+              <div className="fw-bold">Total: {matriculas.length}</div>
+              <div className="text-medium-emphasis">
+                Filtrados: {matriculasFiltradas.length}
+              </div>
+            </div>
+          </CCardHeader>
 
-      <CCardBody>
-        {/* FILTROS */}
-        <CRow className="mb-3">
-          <CCol md={3}>
-            <CFormSelect
-              label="Tamaño"
-              value={filtros.tamano}
-              onChange={(e) => handleCambioFiltro('tamano', e.target.value)}
-            >
-              <option value="">Todos</option>
-              {opcionesTamano.map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
-            </CFormSelect>
-          </CCol>
-
-          <CCol md={3}>
-            <CFormSelect
-              label="Raza"
-              value={filtros.raza}
-              onChange={(e) => handleCambioFiltro('raza', e.target.value)}
-            >
-              <option value="">Todas</option>
-              {opcionesRaza.map((r) => (
-                <option key={r} value={r}>
-                  {r}
-                </option>
-              ))}
-            </CFormSelect>
-          </CCol>
-
-          <CCol md={3}>
-            <CFormSelect
-              label="Plan de matrícula"
-              value={filtros.plan}
-              onChange={(e) => handleCambioFiltro('plan', e.target.value)}
-            >
-              <option value="">Todos</option>
-              {opcionesPlan.map((p) => (
-                <option key={p} value={p}>
-                  {p}
-                </option>
-              ))}
-            </CFormSelect>
-          </CCol>
-
-          <CCol md={3} className="d-flex align-items-end">
-            <CButton
-              color="secondary"
-              variant="outline"
-              className="me-2"
-              onClick={limpiarFiltros}
-            >
-              Limpiar filtros
-            </CButton>
-          </CCol>
-        </CRow>
-
-        {cargando && (
-          <div className="text-center my-3">
-            <CSpinner /> Cargando...
-          </div>
-        )}
-
-        {error && <p className="text-danger">{error}</p>}
-
-        {/* TABLA */}
-        <CTable hover responsive bordered>
-          <CTableHead color="light">
-            <CTableRow>
-              <CTableHeaderCell>Nombre canino</CTableHeaderCell>
-              <CTableHeaderCell>Raza</CTableHeaderCell>
-              <CTableHeaderCell>Tamaño</CTableHeaderCell>
-              <CTableHeaderCell>Plan</CTableHeaderCell>
-              <CTableHeaderCell>Fecha inicio</CTableHeaderCell>
-              <CTableHeaderCell>Fecha fin</CTableHeaderCell>
-              <CTableHeaderCell>Estado</CTableHeaderCell>
-              <CTableHeaderCell className="text-center">
-                Acciones
-              </CTableHeaderCell>
-            </CTableRow>
-          </CTableHead>
-
-          <CTableBody>
-            {matriculasFiltradas.length === 0 && !cargando && (
-              <CTableRow>
-                <CTableDataCell colSpan={8} className="text-center">
-                  No hay matrículas para mostrar.
-                </CTableDataCell>
-              </CTableRow>
+          <CCardBody>
+            {error && (
+              <CAlert color="danger" className="mb-3">
+                {error}
+              </CAlert>
             )}
 
-            {matriculasFiltradas.map((m) => (
-              <CTableRow key={m.id}>
-                <CTableDataCell>{m.nombreCanino}</CTableDataCell>
-                <CTableDataCell>{m.raza}</CTableDataCell>
-                <CTableDataCell>{m.tamano}</CTableDataCell>
-                <CTableDataCell>{m.plan}</CTableDataCell>
-                <CTableDataCell>{m.fechaInicio}</CTableDataCell>
-                <CTableDataCell>{m.fechaFin}</CTableDataCell>
-                <CTableDataCell>{m.estado}</CTableDataCell>
-                <CTableDataCell className="text-center">
+            {/* Búsqueda + acciones */}
+            <CForm className="mb-3">
+              <CRow className="align-items-end">
+                <CCol md={6} className="mb-2">
+                  <CInputGroup>
+                    <CInputGroupText>
+                      <CIcon icon={cilSearch} />
+                    </CInputGroupText>
+                    <CFormInput
+                      placeholder="Buscar por nombre, raza, plan, tamaño o estado"
+                      value={busqueda}
+                      onChange={(e) => setBusqueda(e.target.value)}
+                    />
+                  </CInputGroup>
+                </CCol>
+
+                <CCol md={6} className="mb-2 text-md-end">
                   <CButton
-                    color="warning"
-                    size="sm"
+                    color="secondary"
+                    variant="outline"
                     className="me-2"
-                    onClick={() => abrirModalEditar(m)}
-                    title="Editar matrícula"
+                    onClick={limpiarFiltros}
                   >
-                    <CIcon icon={cilPencil} />
+                    <CIcon icon={cilFilter} className="me-1" />
+                    Limpiar filtros
                   </CButton>
                   <CButton
-                    color="danger"
-                    size="sm"
-                    onClick={() => abrirModalEliminar(m)}
-                    title="Eliminar matrícula"
+                    color="primary"
+                    variant="outline"
+                    onClick={cargarMatriculas}
                   >
-                    <CIcon icon={cilTrash} />
+                    <CIcon icon={cilReload} className="me-1" />
+                    Actualizar datos
                   </CButton>
-                </CTableDataCell>
-              </CTableRow>
-            ))}
-          </CTableBody>
-        </CTable>
-      </CCardBody>
+                </CCol>
+              </CRow>
+
+              {/* Filtros */}
+              <CRow className="mt-3">
+                <CCol md={3} className="mb-2">
+                  <label className="form-label">Tamaño</label>
+                  <CFormSelect
+                    value={filtros.tamano}
+                    onChange={(e) =>
+                      handleCambioFiltro('tamano', e.target.value)
+                    }
+                  >
+                    <option value="">Todos</option>
+                    {opcionesTamano.map((t) => (
+                      <option key={t} value={t}>
+                        {t}
+                      </option>
+                    ))}
+                  </CFormSelect>
+                </CCol>
+
+                <CCol md={3} className="mb-2">
+                  <label className="form-label">Raza</label>
+                  <CFormSelect
+                    value={filtros.raza}
+                    onChange={(e) => handleCambioFiltro('raza', e.target.value)}
+                  >
+                    <option value="">Todas</option>
+                    {opcionesRaza.map((r) => (
+                      <option key={r} value={r}>
+                        {r}
+                      </option>
+                    ))}
+                  </CFormSelect>
+                </CCol>
+
+                <CCol md={3} className="mb-2">
+                  <label className="form-label">Plan de matrícula</label>
+                  <CFormSelect
+                    value={filtros.plan}
+                    onChange={(e) => handleCambioFiltro('plan', e.target.value)}
+                  >
+                    <option value="">Todos</option>
+                    {opcionesPlan.map((p) => (
+                      <option key={p} value={p}>
+                        {p}
+                      </option>
+                    ))}
+                  </CFormSelect>
+                </CCol>
+
+                <CCol md={3} className="mb-2">
+                  <label className="form-label">Estado</label>
+                  <CFormSelect
+                    value={filtros.estado}
+                    onChange={(e) =>
+                      handleCambioFiltro('estado', e.target.value)
+                    }
+                  >
+                    <option value="">Todos</option>
+                    <option value="ACTIVO">Activo</option>
+                    <option value="VENCIDO">Vencido</option>
+                    <option value="CANCELADO">Cancelado</option>
+                  </CFormSelect>
+                </CCol>
+              </CRow>
+
+              <CRow className="mt-3">
+                <CCol md={3} className="mb-2">
+                  <label className="form-label">Fecha inicio desde</label>
+                  <CFormInput
+                    type="date"
+                    value={filtros.fechaDesde}
+                    onChange={(e) =>
+                      handleCambioFiltro('fechaDesde', e.target.value)
+                    }
+                  />
+                </CCol>
+                <CCol md={3} className="mb-2">
+                  <label className="form-label">Fecha inicio hasta</label>
+                  <CFormInput
+                    type="date"
+                    value={filtros.fechaHasta}
+                    onChange={(e) =>
+                      handleCambioFiltro('fechaHasta', e.target.value)
+                    }
+                  />
+                </CCol>
+              </CRow>
+            </CForm>
+
+            {/* Tabla */}
+            {cargando ? (
+              <div className="text-center my-4">
+                <CSpinner />
+              </div>
+            ) : (
+              <CTable striped responsive hover>
+                <CTableHead color="dark">
+                  <CTableRow>
+                    <CTableHeaderCell>#</CTableHeaderCell>
+                    <CTableHeaderCell>Nombre canino</CTableHeaderCell>
+                    <CTableHeaderCell>Raza</CTableHeaderCell>
+                    <CTableHeaderCell>Tamaño</CTableHeaderCell>
+                    <CTableHeaderCell>Plan</CTableHeaderCell>
+                    <CTableHeaderCell>Fecha inicio</CTableHeaderCell>
+                    <CTableHeaderCell>Fecha fin</CTableHeaderCell>
+                    <CTableHeaderCell>Estado</CTableHeaderCell>
+                    <CTableHeaderCell className="text-center">
+                      Acciones
+                    </CTableHeaderCell>
+                  </CTableRow>
+                </CTableHead>
+                <CTableBody>
+                  {matriculasFiltradas.length === 0 ? (
+                    <CTableRow>
+                      <CTableDataCell colSpan={9} className="text-center">
+                        No se encontraron matrículas con los criterios
+                        seleccionados.
+                      </CTableDataCell>
+                    </CTableRow>
+                  ) : (
+                    matriculasFiltradas.map((m, index) => (
+                      <CTableRow key={m.id || index}>
+                        <CTableDataCell>{index + 1}</CTableDataCell>
+                        <CTableDataCell>{m.nombreCanino}</CTableDataCell>
+                        <CTableDataCell>{m.raza}</CTableDataCell>
+                        <CTableDataCell>{m.tamano}</CTableDataCell>
+                        <CTableDataCell>{m.plan}</CTableDataCell>
+                        <CTableDataCell>
+                          {formatearFecha(m.fechaInicio)}
+                        </CTableDataCell>
+                        <CTableDataCell>
+                          {formatearFecha(m.fechaFin)}
+                        </CTableDataCell>
+                        <CTableDataCell>
+                          {renderBadgeEstado(m.estado)}
+                        </CTableDataCell>
+                        <CTableDataCell className="text-center">
+                          <CButton
+                            color="warning"
+                            size="sm"
+                            className="me-2"
+                            onClick={() => abrirModalEditar(m)}
+                            title="Editar matrícula"
+                          >
+                            <CIcon icon={cilPencil} />
+                          </CButton>
+                          <CButton
+                            color="danger"
+                            size="sm"
+                            onClick={() => abrirModalEliminar(m)}
+                            title="Eliminar matrícula"
+                          >
+                            <CIcon icon={cilTrash} />
+                          </CButton>
+                        </CTableDataCell>
+                      </CTableRow>
+                    ))
+                  )}
+                </CTableBody>
+              </CTable>
+            )}
+          </CCardBody>
+        </CCard>
+      </CCol>
 
       {/* MODAL EDITAR */}
       <CModal
@@ -413,7 +599,7 @@ const ListadoMatriculas = () => {
           </CButton>
         </CModalFooter>
       </CModal>
-    </CCard>
+    </CRow>
   )
 }
 

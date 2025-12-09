@@ -8,6 +8,7 @@ export const PERMISSIONS = {
     'user_int:ver',
     'asistencia:ver',
     'rematricula:ver',
+    'clientes:ver',
   ],
   entrenador: [
     'dashboard:ver',
