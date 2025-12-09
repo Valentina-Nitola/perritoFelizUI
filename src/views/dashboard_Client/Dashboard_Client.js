@@ -113,7 +113,10 @@ const RadarChart = ({ title, labels, data, icon = cilChart }) => {
   )
 }
 
-const BarAbsences = ({ dogs }) => {
+// ----------------------------------------------
+// Bar chart ahora para ASISTENCIAS por canino
+// ----------------------------------------------
+const BarAttendances = ({ dogs }) => {
   const canvasRef = useRef(null)
   const chartRef = useRef(null)
 
@@ -125,7 +128,7 @@ const BarAbsences = ({ dogs }) => {
       type: 'bar',
       data: {
         labels: dogs.map((d) => d.name),
-        datasets: [{ label: 'Faltas en el mes', data: dogs.map((d) => d.absencesThisMonth) }],
+        datasets: [{ label: 'Asistencias en el mes', data: dogs.map((d) => d.absencesThisMonth || 0) }],
       },
       options: {
         responsive: true,
@@ -142,13 +145,13 @@ const BarAbsences = ({ dogs }) => {
     <CCard className="h-100 shadow-sm">
       <CCardHeader className="d-flex align-items-center gap-2">
         <CIcon icon={cilCalendar} />
-        <span>Faltas por canino</span>
+        <span>Asistencias por canino</span>
       </CCardHeader>
       <CCardBody style={{ height: 320 }}>
         <canvas ref={canvasRef} />
       </CCardBody>
       <CCardFooter className="text-center small text-body-secondary">
-        Total de faltas del mes:{' '}
+        Total de asistencias del mes:{' '}
         <strong>{fmt(dogs.reduce((s, d) => s + (d.absencesThisMonth || 0), 0))}</strong>
       </CCardFooter>
     </CCard>
@@ -168,7 +171,7 @@ const DogsTable = ({ items }) => (
             <CTableHeaderCell className="bg-body-tertiary">Nombre</CTableHeaderCell>
             <CTableHeaderCell className="bg-body-tertiary">Plan</CTableHeaderCell>
             <CTableHeaderCell className="bg-body-tertiary text-end">Días restantes</CTableHeaderCell>
-            <CTableHeaderCell className="bg-body-tertiary text-end">Faltas mes</CTableHeaderCell>
+            <CTableHeaderCell className="bg-body-tertiary text-end">Asistencias mes</CTableHeaderCell>
             <CTableHeaderCell className="bg-body-tertiary text-end">Aprendizaje</CTableHeaderCell>
             <CTableHeaderCell className="bg-body-tertiary text-end">Salud</CTableHeaderCell>
           </CTableRow>
@@ -220,6 +223,8 @@ const Dashboard_Client = () => {
         setLoading(true)
         const token = localStorage.getItem('access')
         const data = await dashboardService.getClientDashboard(token)
+        // esperamos que backend devuelva lista de caninos con:
+        // { id, name, plan, expiresAt, absencesThisMonth, learning, health, avatar }
         setDogs(data)
       } catch (err) {
         console.error('Error al cargar dashboard:', err)
@@ -231,10 +236,13 @@ const Dashboard_Client = () => {
   }, [])
 
   const kpiDogs = dogs.length
-  const kpiNextExpiryDays = Math.min(
-    ...dogs.map((d) => (d.expiresAt ? daysBetween(new Date(), d.expiresAt) : Infinity)),
-  )
-  const kpiAbsences = dogs.reduce((s, d) => s + (d.absencesThisMonth || 0), 0)
+  const kpiNextExpiryDays = dogs.length
+    ? Math.min(...dogs.map((d) => (d.expiresAt ? daysBetween(new Date(), d.expiresAt) : Infinity)))
+    : 0
+
+  // KPI: total de ASISTENCIAS del mes (suma de todas las asistencias de todos sus perros)
+  const kpiAttendances = dogs.reduce((s, d) => s + (d.absencesThisMonth || 0), 0)
+
   const kpiLearningAvg = averageLearning(dogs)
 
   const learningAgg = aggregateByKeys(dogs, learningKeys, (d) => d.learning)
@@ -252,9 +260,9 @@ const Dashboard_Client = () => {
         </CCol>
         <CCol xs={12} md={3}>
           <KpiCard
-            title="Faltas del mes"
-            value={kpiAbsences}
-            subtitle="Total de faltas registradas"
+            title="Asistencias del mes"
+            value={kpiAttendances}
+            subtitle="Total de asistencias registradas"
             icon={cilUser}
           />
         </CCol>
@@ -278,10 +286,10 @@ const Dashboard_Client = () => {
         </CCol>
       </CRow>
 
-      {/* FILA 3: Faltas */}
+      {/* FILA 3: Asistencias por canino */}
       <CRow className="mb-4">
         <CCol xs={12}>
-          <BarAbsences dogs={dogs} />
+          <BarAttendances dogs={dogs} />
         </CCol>
       </CRow>
 
