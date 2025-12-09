@@ -62,7 +62,7 @@ export const listarMatriculas = async () => {
 // -------------------------------------------
 export const actualizarMatricula = async (idMatricula, payload) => {
   const token = getToken()
-  const url = `${API_BASE}/matriculas/${idMatricula}/`
+  const url = `${API_BASE}/matriculas/listado-global/${idMatricula}/`
 
   const res = await fetch(url, {
     method: 'PUT',
@@ -84,7 +84,7 @@ export const actualizarMatricula = async (idMatricula, payload) => {
 // -------------------------------------------
 export const eliminarMatricula = async (idMatricula) => {
   const token = getToken()
-  const url = `${API_BASE}/matriculas/${idMatricula}/`
+  const url = `${API_BASE}/matriculas/listado-global/${idMatricula}/`
 
   const res = await fetch(url, {
     method: 'DELETE',
